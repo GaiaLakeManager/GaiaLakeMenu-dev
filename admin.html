@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gaia Lake - Kandalama — Admin Control Panel</title>
+<link rel="icon" type="image/png" href="Favicon-Admin.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>try{var _m=localStorage.getItem('gl-admin-mode');if(_m)document.documentElement.setAttribute('data-theme',_m);}catch(e){}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-app">
+
+<!-- ============ SIGN-IN SCREEN ============ -->
+<div id="signinScreen">
+  <div class="signin-card">
+    <div class="brand-badge" id="signinBrandBadge">
+      <img src="logo.png" alt="Gaia Lake" onerror="this.parentElement.textContent='🍃';">
+    </div>
+    <h1 class="signin-title"><span class="t1">Gaia Lake - Kandalama</span><span class="t2">Guest Food &amp; Beverage Menu</span><span class="t3">Admin Control Panel</span></h1>
+    <p>Sign in with the Google account that has editor access to the GuestView Drive folder.</p>
+    <div id="gsiBtnHolder"></div>
+    <div class="signin-note">Only accounts listed in <code>ADMIN_EMAILS</code> (config.js) can make changes.</div>
+    <div class="signin-error" id="signinError"></div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="appShell" class="app-flex">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="mark" id="sidebarMark">GL</div>
+      <div class="txt">Gaia Lake - Kandalama<small>Guest Food &amp; Beverage Menu</small><small class="role">Admin Control Panel</small></div>
+    </div>
+    <button class="navitem active" data-view="dashboard"><span class="ic">📊</span> Dashboard</button>
+    <button class="navitem" data-view="menu"><span class="ic">🍽️</span> Menu</button>
+    <button class="navitem" data-view="profile"><span class="ic">🏠</span> Profile</button>
+    <button class="navitem" data-view="settings"><span class="ic">⚙️</span> Settings</button>
+    <button class="navitem" data-view="qr"><span class="ic">🔗</span> QR Code</button>
+    <button class="navitem nav-signout" id="signOutBtn"><span class="ic">↩</span> Sign Out</button>
+    <div class="dev-footer">Developed by Prasanna Kurukuladithya (Priya) | Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion"></span> | Copyright © 2026. All rights reserved.</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h2 id="viewTitle">Dashboard</h2>
+      </div>
+      <div class="topbar-right">
+        <div class="who" id="whoAmI"></div>
+        <button class="mode-btn" id="modeToggle" title="Toggle dark / light mode" aria-label="Toggle dark or light mode">🌙</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- ---------- DASHBOARD ---------- -->
+      <section id="view-dashboard">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="label">Categories</div><div class="num" id="statCats">–</div></div>
+          <div class="stat-card"><div class="label">Dishes</div><div class="num" id="statDishes">–</div></div>
+          <div class="stat-card"><div class="label">Active Dishes</div><div class="num" id="statActive">–</div></div>
+          <div class="stat-card"><div class="label">Photos Uploaded</div><div class="num" id="statPhotos">–</div></div>
+        </div>
+        <div class="panel-box">
+          <h3>Sync status</h3>
+          <div class="hint" id="syncStatus">—</div>
+          <div class="hint" id="backupStatus" style="margin-top:6px;"></div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn" id="refreshBtn">↻ Refresh from Drive</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- MENU ---------- -->
+      <section id="view-menu" class="hidden">
+        <div class="panel-box">
+          <h3>Categories</h3>
+          <div class="cat-list" id="catList"></div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-primary" id="addCatBtn">+ Add Category</button>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+            <h3 style="margin:0;">Dishes</h3>
+            <button class="btn btn-primary" id="addDishBtn">+ Add New Dish</button>
+          </div>
+          <div class="cat-pills" id="dishCatFilter"></div>
+          <div class="dish-grid" id="dishGrid"></div>
+        </div>
+      </section>
+
+      <!-- ---------- PROFILE ---------- -->
+      <section id="view-profile" class="hidden">
+        <div class="panel-box">
+          <h3>Restaurant Profile</h3>
+          <div class="field-row">
+            <div>
+              <div class="field"><label>Logo</label>
+                <div class="dropzone" id="logoDrop"><div class="ph">🖼️</div><div class="hint">Click to upload logo</div></div>
+                <input type="file" id="logoInput" accept="image/*" class="hidden">
+              </div>
+            </div>
+            <div>
+              <div class="field"><label>Banner</label>
+                <div class="dropzone" id="bannerDrop"><div class="ph">🖼️</div><div class="hint">Click to upload banner</div></div>
+                <input type="file" id="bannerInput" accept="image/*" class="hidden">
+              </div>
+            </div>
+          </div>
+          <div class="field"><label>Restaurant Name</label><input type="text" id="pName"></div>
+          <div class="field-row">
+            <div class="field"><label>Phone Number</label><input type="tel" id="pPhone" placeholder="+94 77 291 1501"></div>
+            <div class="field"><label>City</label><input type="text" id="pCity" placeholder="Kandalama"></div>
+          </div>
+          <div class="field"><label>Country</label><input type="text" id="pCountry" placeholder="Sri Lanka"></div>
+          <button class="btn btn-primary" id="saveProfileBtn">Save Profile</button>
+        </div>
+      </section>
+
+      <!-- ---------- SETTINGS ---------- -->
+      <section id="view-settings" class="hidden">
+        <div class="panel-box">
+          <h3>Accepting Orders</h3>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+            <label class="switch"><input type="checkbox" id="settAcceptToggle"><span class="slider"></span></label>
+            <span class="hint">When this is off, guests see a "message or email us to order" banner instead of the menu's ordering buttons and hours.</span>
+            <button class="btn btn-sm" id="previewGuestBtn" type="button" style="margin-left:auto;">👁 Preview what guests see</button>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Kitchen Opens</label><input type="time" id="kitchenOpen"></div>
+            <div class="field"><label>Kitchen Closes</label><input type="time" id="kitchenClose"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Same-day order cutoff</label><input type="time" id="sameDayCutoff"></div>
+            <div class="field"><label>Latest dining time guests can pick</label><input type="time" id="lastDining"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Daily Breakfast serving time</label><input type="time" id="mealBreakfast"></div>
+            <div class="field"><label>Lunch serving time</label><input type="time" id="mealLunch"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Dinner serving time</label><input type="time" id="mealDinner"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin:4px 0 12px;">
+            <label class="switch"><input type="checkbox" id="askDiningToggle"><span class="slider"></span></label>
+            <span class="hint"><b>Ask guests for a dining date &amp; time.</b> When off, guests just send the order with no date or time (the breakfast-only rule then cannot apply).</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px;">
+            <label class="switch"><input type="checkbox" id="perItemToggle"><span class="slider"></span></label>
+            <span class="hint"><b>Allow a different date/time for individual items</b> (optional per-item choice in the order window).</span>
+          </div>
+          <div class="hint" style="margin-bottom:10px;">Serving times are not shown to guests (they can write a special time in the order Note); they are only used to refuse a meal that has already passed today. Categories set to Breakfast, Lunch or Dinner only are always served at that meal's time: the guest picks just the date and sees e.g. "For Lunch".</div>
+          <div class="hint">Times are in Sri Lanka time (Asia/Colombo), regardless of a guest's own timezone. After the cutoff, guests can no longer choose today as the dining date (tomorrow onward still works). The dining time picker only allows Kitchen Opens through Latest dining time; anything outside that, guests are asked to write in the order Note instead. An order sent while the kitchen is closed still goes through, but the alert to you is marked so staff know it wasn't seen live.</div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Brand Colours</h3>
+          <div class="field-row">
+            <div class="field"><label>Primary Colour</label>
+              <div class="color-field"><input type="color" id="colorPrimary" value="#4C9D38"><input type="text" id="colorPrimaryHex" class="hex-in" value="#4C9D38" spellcheck="false" aria-label="Primary colour hex code"></div>
+            </div>
+            <div class="field"><label>Secondary Colour</label>
+              <div class="color-field"><input type="color" id="colorSecondary" value="#1E9BD7"><input type="text" id="colorSecondaryHex" class="hex-in" value="#1E9BD7" spellcheck="false" aria-label="Secondary colour hex code"></div>
+            </div>
+          </div>
+          <div class="hint">Applied to both this dashboard and the guest-facing menu.</div>
+        </div>
+
+        <div class="panel-box">
+          <h3>For orders</h3>
+          <div class="field-row">
+            <div class="field"><label>Guest-facing orders email (optional)</label><input type="text" id="ordEmail" placeholder="Leave empty to use priyagaialake@gmail.com (config.js)"></div>
+            <div class="field"><label>Orders WhatsApp number</label><input type="tel" id="ordWhatsapp" placeholder="+94 77 291 1501"></div>
+          </div>
+          <div class="hint">This is the address guests see. The private address that receives the order emails is set in the Apps Script (ORDER_EMAIL). Used only for the guest's fallback buttons (WhatsApp / Email) if an order can't be sent directly. These two values are visible in the public menu data. The WhatsApp number defaults to the bungalow phone in Profile if left empty.</div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Rooms / Villas / Cottages</h3>
+          <div class="field"><label>Field name shown to guests</label><input type="text" id="unitLabel" maxlength="20" placeholder="Room"></div>
+          <div class="tag-picker" id="roomManageList"></div>
+          <div class="tag-add-row">
+            <input type="text" id="newRoomInput" placeholder="e.g. Room 1, Room 2, Lotus Villa">
+            <button class="btn btn-sm" id="addRoomBtn">+ Add</button>
+          </div>
+          <div class="hint">Guests pick from this list when ordering. Type each name exactly as it should appear (e.g. Room 1, Lotus Villa) — it is shown as entered everywhere. Separate several with commas (up to 30 characters each). Change the field name above (Room, Villa, Cottage…) whenever your accommodation changes.</div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Group / Bulk-order Labels</h3>
+          <div class="tag-picker" id="groupLabelManageList"></div>
+          <div class="tag-add-row">
+            <input type="text" id="newGroupLabelInput" placeholder="e.g. Group, Bungalow, All Rooms">
+            <button class="btn btn-sm" id="addGroupLabelBtn">+ Add Label</button>
+          </div>
+          <div class="hint">Added to the guest Room dropdown alongside Room Numbers. Selecting one of these shows the Group Selection Policy reminder on the order review screen. Add or rename these anytime — no code change needed.</div>
+        </div>
+
+        <div class="panel-box">
+          <h3>Manage Tags</h3>
+          <div class="tag-picker" id="tagManageList"></div>
+          <div class="tag-add-row">
+            <input type="text" id="newTagInput" placeholder="e.g. Vegan, Best Seller">
+            <button class="btn btn-sm" id="addTagBtn">+ Add Tag</button>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <h3>What's New</h3>
+          <div style="font-size:1.1rem;font-weight:700;" id="whatsNewVersion"></div>
+          <div class="hint" id="whatsNewSummary" style="margin:4px 0 10px;"></div>
+          <div class="hint">Full version history: <a href="WhatsNew.md" download>Download WhatsNew.md</a></div>
+          <div class="hint" style="margin-top:8px;">Version and update notes are managed by the developer with each release — nothing to enter here.</div>
+        </div>
+
+        <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+      </section>
+
+      <!-- ---------- QR ---------- -->
+      <section id="view-qr" class="hidden">
+        <div class="qr-box">
+          <div id="qrImgHolder"></div>
+          <div class="btn-row" style="justify-content:center;">
+            <button class="btn btn-primary" id="downloadQrBtn">⬇ Download PNG</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:16px;max-width:400px;">
+          This QR points to <code id="qrUrlText"></code> — set in <code>config.js</code> as <code>GUEST_MENU_URL</code> once the guest menu is hosted.
+        </p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============ DISH MODAL ============ -->
+<div class="modal-backdrop" id="dishModalBackdrop">
+  <div class="modal">
+    <button class="modal-close" id="dishModalClose">×</button>
+    <h3 id="dishModalTitle">Add New Dish</h3>
+    <div class="field"><label>Photo</label>
+      <div class="dropzone" id="dishPhotoDrop"><div class="ph">📷</div><div class="hint">Click to upload (auto-converted to WebP)</div></div>
+      <input type="file" id="dishPhotoInput" accept="image/*" class="hidden">
+    </div>
+    <div class="field"><label>Category *</label><select id="dishCategory"></select></div>
+    <div class="hint" id="dishCodeLine" style="margin-bottom:10px;font-weight:700;"></div>
+    <div class="field"><label>Dish Name *</label><input type="text" id="dishName"></div>
+    <div class="field"><label>Description</label><textarea id="dishDesc"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Price — LKR</label><input type="number" id="dishPriceLkr" min="0" step="1"></div>
+      <div class="field"><label>Price — USD (optional)</label><input type="number" id="dishPriceUsd" min="0" step="0.01"></div>
+    </div>
+    <div class="field">
+      <label>Sub-options (optional — e.g. choice of protein, each with its own price)</label>
+      <div id="subOptionsList"></div>
+      <button type="button" class="btn btn-sm" id="addSubOptionBtn">+ Add Sub-option</button>
+      <div class="hint" style="margin-top:6px;">Add any number of sub-options. When at least one is added, the price fields above are ignored and each sub-option's own price shows on the guest menu instead.</div>
+    </div>
+    <div class="field"><label>Tags</label><div class="tag-picker" id="dishTagPicker"></div></div>
+    <div class="field" style="display:flex;align-items:center;gap:10px;">
+      <label class="switch"><input type="checkbox" id="dishActive" checked><span class="slider"></span></label>
+      <label style="margin:0;">Active (visible to guests)</label>
+    </div>
+    <div class="btn-row" style="margin-top:8px;justify-content:space-between;">
+      <button class="btn btn-danger hidden" id="deleteDishBtn">Delete Dish</button>
+      <div class="btn-row">
+        <button class="btn" id="cancelDishBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveDishBtn">Save Dish</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CATEGORY MODAL ============ -->
+<div class="modal-backdrop" id="catModalBackdrop">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" id="catModalClose">×</button>
+    <h3 id="catModalTitle">Add Category</h3>
+    <div class="field"><label>Icon (emoji, optional)</label><input type="text" id="catIcon" maxlength="4" placeholder="🌅"></div>
+    <div class="field"><label>Category Name *</label><input type="text" id="catName" placeholder="Breakfast"></div>
+    <div class="field" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="catBB" style="width:auto;">
+      <label for="catBB" style="margin:0;">Included on Bed &amp; Breakfast (guests on BB see items here as free)</label>
+    </div>
+    <div class="field"><label>Served at</label>
+      <select id="catMeal"><option value="">Any time — guest picks Breakfast, Lunch, Dinner or a time</option><option value="B">Breakfast only</option><option value="L">Lunch only</option><option value="D">Dinner only</option></select>
+      <div class="hint">For Breakfast/Lunch/Dinner categories the guest picks only the date; the item is served at the serving time set in Settings.</div>
+    </div>
+    <div class="btn-row" style="justify-content:space-between;">
+      <button class="btn btn-danger hidden" id="deleteCatBtn">Delete</button>
+      <div class="btn-row">
+        <button class="btn" id="cancelCatBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveCatBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+/* ---------------- version (hardcoded in config.js — same number as the guest menu) ---------------- */
+document.getElementById('devVersion').textContent = CONFIG.APP_VERSION;
+if (CONFIG.ENV_LABEL){ const miss = ['MENU_FILE_ID','BACKUP_FOLDER_ID','DELETED_IMAGES_FOLDER_ID','ORDERS_FOLDER_ID','ORDER_SCRIPT_URL'].filter(k => !CONFIG[k] || /^PASTE_/.test(CONFIG[k]));
+  if (miss.length){ document.body.innerHTML = '<div style="max-width:560px;margin:12vh auto;padding:20px;font:600 15px/1.6 sans-serif;">DEV admin is not set up yet. Fill in these lines in config.js first, so it can never touch the live menu:<br><br><b>' + miss.join('<br>') + '</b></div>'; throw new Error('configDev.js incomplete'); } }
+if (CONFIG.ENV_LABEL){ const r = document.createElement('div'); r.className = 'env-ribbon'; r.textContent = CONFIG.ENV_LABEL + ' copy'; document.body.appendChild(r); }
+
+/* ---------------- dark / light mode (remembered on this device) ---------------- */
+(function(){
+  const root = document.documentElement, btn = document.getElementById('modeToggle');
+  const icon = () => btn.textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+  icon();
+  btn.onclick = () => {
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('gl-admin-mode', next); }catch(e){}
+    icon();
+  };
+})();
+
+/* ==========================================================================
+   STATE
+   ========================================================================== */
+let accessToken = null;
+let tokenClient = null;
+let userEmail = null;
+let state = null;           // the full menu JSON
+let folderIds = { dishImages:null, backup:null, deleted:null };
+let editingDishId = null;
+let editingCatId = null;
+let dishPendingImageBlob = null;   // webp blob staged for upload on save
+let dishRemovedImage = false;
+let logoPendingBlob = null, bannerPendingBlob = null;
+
+const DEFAULT_STATE = () => ({
+  meta:{ updated:new Date().toISOString() },
+  profile:{ name:"Gaia Lake - Kandalama", phone:"", city:"", country:"" },
+  settings:{ acceptingOrders:true, kitchenOpen:"06:00", kitchenClose:"22:00", sameDayCutoff:"19:00", lastDining:"21:00", groupLabels:[],
+             theme:{ primary: CONFIG.DEFAULT_THEME.primary, secondary: CONFIG.DEFAULT_THEME.secondary } },
+  categories:[], dishes:[], tags:["Popular","Chef's Special","Spicy"]
+});
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ==========================================================================
+   GOOGLE SIGN-IN
+   ========================================================================== */
+window.onload = () => {
+  if (!window.google || CONFIG.GOOGLE_CLIENT_ID.startsWith('PASTE_')){
+    document.getElementById('signinError').style.display='block';
+    document.getElementById('signinError').textContent = 'config.js is not set up yet — see SETUP.md.';
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email',
+    callback: onTokenResponse
+  });
+  google.accounts.id.initialize({ client_id: CONFIG.GOOGLE_CLIENT_ID, callback: () => {} });
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary'; btn.textContent = 'Sign in with Google';
+  btn.style.width = '100%';
+  btn.onclick = () => tokenClient.requestAccessToken({ prompt: '' });
+  document.getElementById('gsiBtnHolder').appendChild(btn);
+};
+
+async function onTokenResponse(resp){
+  if (resp.error){ toast('Sign-in failed: ' + resp.error); return; }
+  accessToken = resp.access_token;
+  try{
+    const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    }).then(r=>r.json());
+    userEmail = info.email;
+  }catch(e){ userEmail = '(unknown)'; }
+
+  if (CONFIG.ADMIN_EMAILS.length && !CONFIG.ADMIN_EMAILS.includes(userEmail)){
+    document.getElementById('signinError').style.display='block';
+    document.getElementById('signinError').textContent =
+      `${userEmail} is not in ADMIN_EMAILS (config.js). Ask an existing admin to add you.`;
+    return;
+  }
+
+  document.getElementById('signinScreen').style.display='none';
+  document.getElementById('appShell').style.display='flex';
+  document.getElementById('whoAmI').textContent = userEmail;
+  await bootstrap();
+}
+
+document.getElementById('signOutBtn').onclick = () => {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
+  location.reload();
+};
+
+/* ==========================================================================
+   DRIVE HELPERS
+   ========================================================================== */
+async function driveFetch(url, options={}, timeoutMs=20000){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(url, {
+      ...options,
+      signal: ctrl.signal,
+      headers: { Authorization: 'Bearer ' + accessToken, ...(options.headers||{}) }
+    });
+    if (!res.ok){
+      const body = await res.text().catch(()=> '');
+      throw new Error(`Drive API ${res.status}: ${body.slice(0,200)}`);
+    }
+    return res;
+  } finally { clearTimeout(timer); }
+}
+
+async function findChild(parentId, name, isFolder){
+  const mime = isFolder ? " and mimeType='application/vnd.google-apps.folder'" : "";
+  const q = encodeURIComponent(`'${parentId}' in parents and name='${name.replace(/'/g,"\\'")}' and trashed=false${mime}`);
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+  const json = await res.json();
+  return json.files && json.files[0] ? json.files[0].id : null;
+}
+
+async function createJsonFile(parentId, name, obj){
+  const boundary = 'glboundary' + uid();
+  const metadata = { name, parents:[parentId], mimeType:'application/json' };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(obj)}\r\n--${boundary}--`;
+  const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method:'POST',
+    headers:{ 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body
+  });
+  return (await res.json()).id;
+}
+
+async function updateJsonFile(fileId, obj){
+  await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    method:'PATCH',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify(obj)
+  });
+}
+
+async function downloadJsonFile(fileId){
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+  return res.json();
+}
+
+async function uploadImageBlob(parentId, blob, filename){
+  const boundary = 'glboundary' + uid();
+  const metadata = { name: filename, parents:[parentId], mimeType: blob.type || 'image/webp' };
+  const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+              `--${boundary}\r\nContent-Type: ${blob.type || 'image/webp'}\r\n\r\n`;
+  const post = `\r\n--${boundary}--`;
+  const body = new Blob([pre, blob, post]);
+  const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method:'POST',
+    headers:{ 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body
+  });
+  // Make the uploaded photo viewable by anyone with the link (it lives in the
+  // guest-readable DishImages folder, but permissions are set per-file too).
+  const id = (await res.json()).id;
+  try{
+    await driveFetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ role:'reader', type:'anyone' })
+    });
+  }catch(e){ console.warn('Could not set public permission on image (folder-level sharing may already cover it):', e); }
+  return id;
+}
+
+async function moveFile(fileId, fromParent, toParent){
+  await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${toParent}&removeParents=${fromParent}`, { method:'PATCH' });
+}
+async function trashFile(fileId){
+  await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ trashed:true })
+  });
+}
+
+/* ==========================================================================
+   ORDERING + ITEM CODES
+   ========================================================================== */
+function fmtCode(n){ return String(n).padStart(3,'0'); }
+function sortedCategories(){
+  return state.categories.map((c,i)=>({c,i}))
+    .sort((a,b)=>((a.c.order||0)-(b.c.order||0)) || (a.i-b.i)).map(x=>x.c);
+}
+// Dishes in menu order: category order first, then the dish's own order, then its code.
+function dishesInMenuOrder(list){
+  const rank = new Map(sortedCategories().map((c,i)=>[c.id,i]));
+  return list.map((d,i)=>({d,i})).sort((a,b)=>
+    ((rank.has(a.d.categoryId)?rank.get(a.d.categoryId):9999) - (rank.has(b.d.categoryId)?rank.get(b.d.categoryId):9999))
+    || ((a.d.order||0)-(b.d.order||0)) || ((a.d.code||0)-(b.d.code||0)) || (a.i-b.i)).map(x=>x.d);
+}
+// Runs after every load: gives categories clean sequential order, gives any dish without a
+// code the next number (never reusing one), and keeps the counter ahead of every code ever issued.
+function normalizeState(){
+  let changed = false;
+  state.meta = state.meta || {};
+  sortedCategories().forEach((c,i)=>{ if (c.order !== i){ c.order = i; changed = true; } });
+  state.categories = sortedCategories();
+  const maxCode = state.dishes.reduce((m,d)=>Math.max(m, Number(d.code)||0), 0);
+  let next = Math.max(Number(state.meta.nextItemNo)||1, maxCode+1);
+  dishesInMenuOrder(state.dishes).forEach(d=>{ if (!d.code){ d.code = next++; changed = true; } });
+  if (state.meta.nextItemNo !== next){ state.meta.nextItemNo = next; changed = true; }
+  return changed;
+}
+
+/* ==========================================================================
+   BOOTSTRAP — resolve folders + menu file, load state
+   ========================================================================== */
+async function bootstrap(){
+  document.getElementById('syncStatus').textContent = 'Connecting to Drive…';
+  try{
+    folderIds.dishImages = await findChild(CONFIG.GUEST_FOLDER_ID, CONFIG.DISH_IMAGES_FOLDER_NAME, true);
+    // Backup / Deleted Images: use the folder ID from config.js if given, otherwise look by name inside GuestView
+    folderIds.backup  = CONFIG.BACKUP_FOLDER_ID  || await findChild(CONFIG.GUEST_FOLDER_ID, CONFIG.BACKUP_FOLDER_NAME, true);
+    folderIds.deleted = CONFIG.DELETED_IMAGES_FOLDER_ID || await findChild(CONFIG.GUEST_FOLDER_ID, CONFIG.DELETED_IMAGES_FOLDER_NAME, true);
+    const folderState = {
+      dishImages: await folderStatus(folderIds.dishImages),
+      backup:     await folderStatus(folderIds.backup),
+      deleted:    await folderStatus(folderIds.deleted)
+    };
+    if (folderState.backup !== 'ok' || folderState.deleted !== 'ok' || folderState.dishImages !== 'ok'){
+      toast('Folder problem — see the Dashboard: backups or deleted-photo moves may not be working.');
+    }
+
+    let menuFileId = CONFIG.MENU_FILE_ID;
+    if (!menuFileId){
+      menuFileId = await findChild(CONFIG.GUEST_FOLDER_ID, 'gaia_lake_menu.json', false);
+    }
+    if (!menuFileId){
+      state = DEFAULT_STATE();
+      menuFileId = await createJsonFile(CONFIG.GUEST_FOLDER_ID, 'gaia_lake_menu.json', state);
+      toast('Created a new menu file on Drive.');
+    } else {
+      state = await downloadJsonFile(menuFileId);
+    }
+    CONFIG.MENU_FILE_ID = menuFileId;
+    lastSavedJson = JSON.stringify(state);   // what is on Drive right now — this is what a backup should keep
+    const needsSave = normalizeState();
+
+    const fl = (label, st, hint) => st === 'ok'
+      ? `${label} ✓`
+      : `<span style="color:var(--danger);font-weight:700;">${label} ✗ ${hint[st] || hint.error}</span>`;
+    const hintFor = name => ({
+      notfound: `(not found — put a folder named "${name}" inside GuestView, or paste its ID in config.js)`,
+      readonly: '(you only have view access — this account needs Editor on the folder)',
+      error:    '(could not open the folder — check the ID and your access)'
+    });
+    document.getElementById('syncStatus').innerHTML =
+      `Connected. Menu file ID: <code>${menuFileId}</code><br>` +
+      `Folders: ${fl('DishImages', folderState.dishImages, hintFor(CONFIG.DISH_IMAGES_FOLDER_NAME))} · ` +
+      `${fl('Backup', folderState.backup, hintFor(CONFIG.BACKUP_FOLDER_NAME))} · ` +
+      `${fl('Deleted Images', folderState.deleted, hintFor(CONFIG.DELETED_IMAGES_FOLDER_NAME))}<br>` +
+      (CONFIG.MENU_FILE_ID !== menuFileId ? '' : `<span style="color:var(--danger)">If this ID is not already in config.js, copy it into MENU_FILE_ID in the config.js used by BOTH this admin page and the public guest menu page.</span>`);
+
+    applyTheme();
+    renderAll();
+    if (needsSave) await persist(false);   // first run after this update: save the new item codes
+    refreshBackupStatus();
+  }catch(err){
+    console.error(err);
+    document.getElementById('syncStatus').textContent = 'Connection failed: ' + err.message;
+    toast('Could not connect to Drive — see Dashboard for details.');
+  }
+}
+
+let saveTimer = null;
+let lastSavedJson = null;   // the menu exactly as last saved to / loaded from Drive
+let saveNotes = [];         // problems to report in the next save message (e.g. a photo that could not be moved)
+/* ---- tiered automatic backups: 1 file per day / week / month, oldest pruned (same design as the Inventory app) ---- */
+const p2 = n => String(n).padStart(2,'0');
+function localDateKey(d=new Date()){ return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; }
+function localMonthKey(d=new Date()){ return `${d.getFullYear()}-${p2(d.getMonth()+1)}`; }
+function isoWeekLabel(d=new Date()){
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));   // built from LOCAL y/m/d, so no UTC day-shift
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return `${t.getUTCFullYear()}-W${p2(Math.ceil(((t - yearStart) / 86400000 + 1) / 7))}`;
+}
+const BACKUP_TIERS = [
+  { id:'daily',   prefix:'menu-backup-daily-',   key: localDateKey,  keep:14 },
+  { id:'weekly',  prefix:'menu-backup-weekly-',  key: isoWeekLabel,  keep:8  },
+  { id:'monthly', prefix:'menu-backup-monthly-', key: localMonthKey, keep:12 }
+];
+async function refreshBackupStatus(){
+  const el = document.getElementById('backupStatus');
+  if (!folderIds.backup){ el.textContent = ''; return; }
+  try{
+    const q = encodeURIComponent(`'${folderIds.backup}' in parents and trashed=false`);
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=files(name)`);
+    const names = ((await res.json()).files || []).map(f => f.name);
+    const count = t => names.filter(n => n.startsWith(t.prefix)).length;
+    const legacy = names.filter(n => n.startsWith('menu-backup-') && !BACKUP_TIERS.some(t => n.startsWith(t.prefix))).length;
+    el.innerHTML = `Backups: ${count(BACKUP_TIERS[0])} daily · ${count(BACKUP_TIERS[1])} weekly · ${count(BACKUP_TIERS[2])} monthly ` +
+      `(the newest ${BACKUP_TIERS.map(t=>(CONFIG.BACKUP_KEEP&&CONFIG.BACKUP_KEEP[t.id])||t.keep).join(' / ')} are kept automatically)` +
+      (legacy ? `<br>${legacy} older test backup${legacy>1?'s':''} (menu-backup-YYYY-MM-DD_hh-mm-ss.json) — no longer needed, you can delete ${legacy>1?'them':'it'} in Drive.` : '');
+  }catch(e){ el.textContent = ''; console.warn('Backup summary failed', e); }
+}
+let backupChecked = {};   // tier id -> period already confirmed this session (so most saves make no extra Drive calls)
+// Called just BEFORE a save overwrites the menu file. Each period (day / ISO week / month) gets ONE file
+// holding the menu as it stood before that period's first save; it is never overwritten. Older ones are trashed.
+async function ensureBackups(){
+  const keys = {}; BACKUP_TIERS.forEach(t => keys[t.id] = t.key());
+  const due = BACKUP_TIERS.filter(t => backupChecked[t.id] !== keys[t.id]);
+  if (!due.length) return [];
+  const q = encodeURIComponent(`'${folderIds.backup}' in parents and trashed=false`);
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=files(id,name)`);
+  const files = (await res.json()).files || [];
+  const have = new Set(files.map(f => f.name));
+  const missing = due.filter(t => !have.has(`${t.prefix}${keys[t.id]}.json`));
+  const created = [];
+  if (missing.length){
+    let snapshot;   // the menu as it is on Drive right now = the state before this save
+    try{ snapshot = await downloadJsonFile(CONFIG.MENU_FILE_ID); }
+    catch(e){ if (!lastSavedJson) throw e; snapshot = JSON.parse(lastSavedJson); }
+    for (const t of missing){
+      const name = `${t.prefix}${keys[t.id]}.json`;
+      const id = await createJsonFile(folderIds.backup, name, snapshot);
+      files.push({ id, name });
+      created.push(t.id);
+    }
+  }
+  due.forEach(t => backupChecked[t.id] = keys[t.id]);
+  // keep only the newest N of each tier (moved to Drive's Trash, so still recoverable for a while)
+  for (const t of BACKUP_TIERS){
+    const keep = (CONFIG.BACKUP_KEEP && CONFIG.BACKUP_KEEP[t.id]) || t.keep;
+    const mine = files.filter(f => f.name.startsWith(t.prefix) && f.name.endsWith('.json'))
+                      .sort((x, y) => y.name.localeCompare(x.name));
+    for (const old of mine.slice(keep)){
+      try{ await trashFile(old.id); }catch(e){ console.warn('Could not remove old backup', old.name, e); }
+    }
+  }
+  return created;
+}
+async function folderStatus(id){
+  if (!id) return 'notfound';
+  try{
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,capabilities(canAddChildren)`);
+    const j = await res.json();
+    return j.capabilities && j.capabilities.canAddChildren === false ? 'readonly' : 'ok';
+  }catch(e){ console.error('Folder check failed', id, e); return 'error'; }
+}
+async function persist(showToast=true){
+  state.meta.updated = new Date().toISOString();
+  const problems = saveNotes.splice(0);
+  let backedUp = [];
+  try{
+    // 1) automatic backups (daily / weekly / monthly) — before the save overwrites the menu file
+    if (!folderIds.backup){
+      problems.push('NOT backed up — Backup folder not found (see Dashboard)');
+    } else {
+      try{ backedUp = await ensureBackups(); }
+      catch(e){
+        console.error('Backup failed', e);
+        problems.push('Backup FAILED — ' + e.message.slice(0,140));
+      }
+    }
+    // 2) save the new menu
+    await updateJsonFile(CONFIG.MENU_FILE_ID, state);
+    lastSavedJson = JSON.stringify(state);
+    if (problems.length) toast('Saved, but: ' + problems.join(' · '));
+    else if (showToast) toast(backedUp.length ? 'Saved. Backup created (' + backedUp.join(', ') + ').' : 'Saved.');
+    if (backedUp.length) refreshBackupStatus();
+  }catch(err){
+    console.error(err);
+    toast('Save failed: ' + err.message);
+  }
+}
+
+/* ==========================================================================
+   THEME
+   ========================================================================== */
+function applyTheme(){
+  const t = state.settings.theme || CONFIG.DEFAULT_THEME;
+  document.documentElement.style.setProperty('--brand-1', t.primary);
+  document.documentElement.style.setProperty('--brand-2', t.secondary);
+}
+
+/* ==========================================================================
+   NAVIGATION
+   ========================================================================== */
+document.querySelectorAll('.navitem[data-view]').forEach(btn=>{
+  btn.onclick = () => {
+    document.querySelectorAll('.navitem[data-view]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
+    document.getElementById('view-' + btn.dataset.view).classList.remove('hidden');
+    document.getElementById('viewTitle').textContent = btn.textContent.trim();
+    document.getElementById('sidebar').classList.remove('open');
+    if (btn.dataset.view === 'qr') renderQr();
+  };
+});
+document.getElementById('menuBtn').onclick = () => document.getElementById('sidebar').classList.toggle('open');
+
+/* ==========================================================================
+   IMAGE → WEBP HELPER
+   ========================================================================== */
+async function fileToWebp(file, maxDim=1600, quality=0.82){
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  const scale = Math.min(1, maxDim / Math.max(width, height));
+  width = Math.round(width * scale); height = Math.round(height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+}
+function dropzoneHandler(dropEl, inputEl, onFile){
+  dropEl.onclick = () => inputEl.click();
+  inputEl.onchange = async () => {
+    if (!inputEl.files[0]) return;
+    const blob = await fileToWebp(inputEl.files[0]);
+    const url = URL.createObjectURL(blob);
+    dropEl.innerHTML = `<img src="${url}">`;
+    onFile(blob);
+  };
+}
+
+/* ==========================================================================
+   RENDER — DASHBOARD
+   ========================================================================== */
+function renderDashboard(){
+  document.getElementById('statCats').textContent = state.categories.length;
+  document.getElementById('statDishes').textContent = state.dishes.length;
+  document.getElementById('statActive').textContent = state.dishes.filter(d=>d.active!==false).length;
+  document.getElementById('statPhotos').textContent = state.dishes.filter(d=>d.imageFileId).length;
+}
+document.getElementById('refreshBtn').onclick = async () => {
+  state = await downloadJsonFile(CONFIG.MENU_FILE_ID);
+  lastSavedJson = JSON.stringify(state);
+  const needsSave = normalizeState();
+  applyTheme(); renderAll(); toast('Refreshed from Drive.');
+  if (needsSave) await persist(false);
+};
+
+/* ==========================================================================
+   RENDER — CATEGORIES
+   ========================================================================== */
+function renderCategories(){
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+  state.categories = sortedCategories();
+  state.categories.forEach((cat,i)=>{
+    const count = state.dishes.filter(d=>d.categoryId===cat.id).length;
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    row.innerHTML = `
+      <span class="icon-in">${cat.icon||'🍽️'}</span>
+      <span class="name">${cat.name}${cat.bbIncluded ? ' <span class="tag" style="font-size:.65rem;">BB</span>' : ''}${(() => { const m = (cat.meal !== undefined ? cat.meal : (cat.bfOnly !== undefined ? (cat.bfOnly ? 'B' : '') : (cat.bbIncluded ? 'B' : ''))); return m ? ' <span class="tag" style="font-size:.65rem;">' + ({B:'Breakfast',L:'Lunch',D:'Dinner'}[m]) + ' only</span>' : ''; })()}</span>
+      <span class="count">${count} item${count===1?'':'s'}</span>
+      <div class="order-btns">
+        <button ${i===0?'disabled':''} data-dir="-1">▲</button>
+        <button ${i===state.categories.length-1?'disabled':''} data-dir="1">▼</button>
+      </div>
+      <button class="btn btn-sm" data-edit>Edit</button>`;
+    row.querySelectorAll('[data-dir]').forEach(b=>{
+      b.onclick = async () => {
+        const dir = parseInt(b.dataset.dir);
+        const idx = state.categories.findIndex(c=>c.id===cat.id);
+        const swap = state.categories[idx+dir];
+        if (!swap) return;
+        const tmp = swap.order; swap.order = cat.order; cat.order = tmp;
+        renderCategories(); renderDishSection(); await persist(false);
+      };
+    });
+    row.querySelector('[data-edit]').onclick = () => openCatModal(cat);
+    list.appendChild(row);
+  });
+  // keep select + filter pills in sync
+  const sel = document.getElementById('dishCategory');
+  sel.innerHTML = sortedCategories().map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('');
+}
+
+document.getElementById('addCatBtn').onclick = () => openCatModal(null);
+function openCatModal(cat){
+  editingCatId = cat ? cat.id : null;
+  document.getElementById('catModalTitle').textContent = cat ? 'Edit Category' : 'Add Category';
+  document.getElementById('catIcon').value = cat ? (cat.icon||'') : '';
+  document.getElementById('catName').value = cat ? cat.name : '';
+  document.getElementById('catBB').checked = cat ? !!cat.bbIncluded : false;
+  document.getElementById('catMeal').value = cat ? (cat.meal !== undefined ? cat.meal : (cat.bfOnly !== undefined ? (cat.bfOnly ? 'B' : '') : (cat.bbIncluded ? 'B' : ''))) : '';
+  document.getElementById('deleteCatBtn').classList.toggle('hidden', !cat);
+  document.getElementById('catModalBackdrop').classList.add('open');
+}
+function closeCatModal(){ document.getElementById('catModalBackdrop').classList.remove('open'); }
+document.getElementById('catModalClose').onclick = closeCatModal;
+document.getElementById('cancelCatBtn').onclick = closeCatModal;
+document.getElementById('saveCatBtn').onclick = async () => {
+  const name = document.getElementById('catName').value.trim();
+  if (!name){ toast('Category name is required.'); return; }
+  const icon = document.getElementById('catIcon').value.trim();
+  const bbIncluded = document.getElementById('catBB').checked, meal = document.getElementById('catMeal').value;
+  if (editingCatId){
+    const c = state.categories.find(c=>c.id===editingCatId);
+    c.name = name; c.icon = icon; c.bbIncluded = bbIncluded; c.meal = meal; delete c.bfOnly;
+  } else {
+    state.categories.push({ id: uid(), name, icon, bbIncluded, meal, order: state.categories.reduce((m,c)=>Math.max(m,c.order||0),-1)+1 });
+  }
+  closeCatModal(); renderCategories(); renderDishSection();
+  await persist();
+};
+document.getElementById('deleteCatBtn').onclick = async () => {
+  const inUse = state.dishes.filter(d=>d.categoryId===editingCatId).length;
+  if (inUse && !confirm(`${inUse} dish(es) use this category. Delete the category anyway? Those dishes will stay but lose their category.`)) return;
+  state.categories = state.categories.filter(c=>c.id!==editingCatId);
+  closeCatModal(); renderCategories(); renderDishSection();
+  await persist();
+};
+
+/* ==========================================================================
+   RENDER — DISHES
+   ========================================================================== */
+let activeDishFilter = 'all';
+function renderDishSection(){
+  const filterEl = document.getElementById('dishCatFilter');
+  filterEl.innerHTML = `<button class="cat-pill ${activeDishFilter==='all'?'active':''}" data-f="all">All (${state.dishes.length})</button>` +
+    sortedCategories().map(c=>{
+      const n = state.dishes.filter(d=>d.categoryId===c.id).length;
+      return `<button class="cat-pill ${activeDishFilter===c.id?'active':''}" data-f="${c.id}">${c.icon||''} ${c.name} (${n})</button>`;
+    }).join('');
+  filterEl.querySelectorAll('[data-f]').forEach(b=>{
+    b.onclick = () => { activeDishFilter = b.dataset.f; renderDishSection(); };
+  });
+
+  const grid = document.getElementById('dishGrid');
+  const items = dishesInMenuOrder(state.dishes.filter(d => activeDishFilter==='all' || d.categoryId===activeDishFilter));
+  grid.innerHTML = items.map(d=>{
+    const cat = state.categories.find(c=>c.id===d.categoryId);
+    const thumb = d.imageFileId
+      ? `<img class="thumb" src="https://drive.google.com/thumbnail?id=${d.imageFileId}&sz=w400">`
+      : `<div class="thumb-ph">🍽️</div>`;
+    const noSubOptions = !d.subOptions || !d.subOptions.length;
+    const price = noSubOptions
+      ? [d.price?.lkr?`LKR ${d.price.lkr}`:'', d.price?.usd?`$${d.price.usd}`:''].filter(Boolean).join(' · ')
+      : '';
+    const subOptionsHtml = !noSubOptions
+      ? `<div class="dish-suboptions">${d.subOptions.map(o=>{
+          const parts = [o.price?.lkr?`LKR ${o.price.lkr}`:'', o.price?.usd?`$${o.price.usd}`:''].filter(Boolean).join(' · ');
+          return `<div class="dish-suboption-row"><span>${esc(o.name)}</span><span>${parts}</span></div>`;
+        }).join('')}</div>`
+      : '';
+    return `<div class="dish-card">
+      ${thumb}
+      <div class="body">
+        <div class="name-row"><span class="name"><span class="item-no">#${fmtCode(d.code||0)}</span>${esc(d.name)}</span><span class="price">${price}</span></div>
+        <div class="hint">${cat ? (cat.icon||'')+' '+esc(cat.name) : '—'} ${d.active===false?'<span class=\"inactive-badge\">· Hidden</span>':''}</div>
+        ${d.description ? `<div class="dish-desc">${esc(d.description)}</div>` : ''}
+        ${subOptionsHtml}
+        <div class="tags">${(d.tags||[]).map(t=>`<span class="tag-chip selected">${esc(t)}</span>`).join('')}</div>
+        <div class="actions"><button class="btn btn-sm" data-edit="${d.id}">Edit</button></div>
+      </div>
+    </div>`;
+  }).join('') || '<p class="hint">No dishes yet.</p>';
+  grid.querySelectorAll('[data-edit]').forEach(b=>{
+    b.onclick = () => openDishModal(state.dishes.find(d=>d.id===b.dataset.edit));
+  });
+}
+
+document.getElementById('addDishBtn').onclick = () => openDishModal(null);
+function renderTagPicker(container, selectedTags){
+  container.innerHTML = state.tags.map(t=>
+    `<span class="tag-chip ${selectedTags.includes(t)?'selected':''}" data-tag="${t}">${t}</span>`
+  ).join('');
+  container.querySelectorAll('[data-tag]').forEach(chip=>{
+    chip.onclick = () => {
+      const t = chip.dataset.tag;
+      const i = selectedTags.indexOf(t);
+      if (i>-1) selectedTags.splice(i,1); else selectedTags.push(t);
+      chip.classList.toggle('selected');
+    };
+  });
+}
+let dishSelectedTags = [];
+let dishSubOptions = [];
+function renderSubOptions(){
+  const holder = document.getElementById('subOptionsList');
+  holder.innerHTML = dishSubOptions.map((o, i) => `
+    <div class="sub-opt-row" data-idx="${i}">
+      <input type="text" class="subOptName" placeholder="e.g. Creamy Chicken Curry" value="${esc(o.name||'')}">
+      <input type="number" class="subOptLkr" placeholder="LKR" min="0" step="1" value="${o.lkr ?? ''}">
+      <input type="number" class="subOptUsd" placeholder="USD" min="0" step="0.01" value="${o.usd ?? ''}">
+      <button type="button" class="btn btn-sm btn-danger" data-remove-sub="${i}">×</button>
+    </div>`).join('');
+  holder.querySelectorAll('.sub-opt-row').forEach(row => {
+    const i = Number(row.dataset.idx);
+    row.querySelector('.subOptName').oninput = e => dishSubOptions[i].name = e.target.value;
+    row.querySelector('.subOptLkr').oninput = e => dishSubOptions[i].lkr = e.target.value;
+    row.querySelector('.subOptUsd').oninput = e => dishSubOptions[i].usd = e.target.value;
+  });
+  holder.querySelectorAll('[data-remove-sub]').forEach(btn => {
+    btn.onclick = () => { dishSubOptions.splice(Number(btn.dataset.removeSub), 1); renderSubOptions(); };
+  });
+}
+document.getElementById('addSubOptionBtn').onclick = () => {
+  dishSubOptions.push({ name:'', lkr:'', usd:'' });
+  renderSubOptions();
+};
+function openDishModal(dish){
+  editingDishId = dish ? dish.id : null;
+  dishPendingImageBlob = null; dishRemovedImage = false;
+  document.getElementById('dishModalTitle').textContent = dish ? 'Edit Dish' : 'Add New Dish';
+  document.getElementById('dishCodeLine').textContent = dish && dish.code ? `Item No. #${fmtCode(dish.code)} (permanent)` : 'Item No. will be assigned automatically when you save';
+  document.getElementById('dishName').value = dish ? dish.name : '';
+  document.getElementById('dishDesc').value = dish ? (dish.description||'') : '';
+  document.getElementById('dishPriceLkr').value = dish?.price?.lkr ?? '';
+  document.getElementById('dishPriceUsd').value = dish?.price?.usd ?? '';
+  document.getElementById('dishCategory').value = dish ? dish.categoryId : (state.categories[0]?.id||'');
+  document.getElementById('dishActive').checked = dish ? dish.active !== false : true;
+  document.getElementById('deleteDishBtn').classList.toggle('hidden', !dish);
+  dishSelectedTags = dish ? [...(dish.tags||[])] : [];
+  renderTagPicker(document.getElementById('dishTagPicker'), dishSelectedTags);
+  dishSubOptions = (dish?.subOptions||[]).map(o => ({ name:o.name||'', lkr:o.price?.lkr ?? '', usd:o.price?.usd ?? '' }));
+  renderSubOptions();
+  const drop = document.getElementById('dishPhotoDrop');
+  drop.innerHTML = dish?.imageFileId
+    ? `<img src="https://drive.google.com/thumbnail?id=${dish.imageFileId}&sz=w400">`
+    : `<div class="ph">📷</div><div class="hint">Click to upload (auto-converted to WebP)</div>`;
+  document.getElementById('dishModalBackdrop').classList.add('open');
+}
+function closeDishModal(){ document.getElementById('dishModalBackdrop').classList.remove('open'); }
+document.getElementById('dishModalClose').onclick = closeDishModal;
+document.getElementById('cancelDishBtn').onclick = closeDishModal;
+dropzoneHandler(document.getElementById('dishPhotoDrop'), document.getElementById('dishPhotoInput'), blob => { dishPendingImageBlob = blob; });
+
+document.getElementById('saveDishBtn').onclick = async () => {
+  const name = document.getElementById('dishName').value.trim();
+  if (!name){ toast('Dish name is required.'); return; }
+  const categoryId = document.getElementById('dishCategory').value;
+  if (!categoryId){ toast('Add a category first.'); return; }
+
+  let dish;
+  if (editingDishId){ dish = state.dishes.find(d=>d.id===editingDishId); }
+  else {
+    // permanent, never-reused item code: counter only ever goes up (deleting a dish never frees its number)
+    const maxCode = state.dishes.reduce((m,d)=>Math.max(m, Number(d.code)||0), 0);
+    const code = Math.max(Number(state.meta.nextItemNo)||1, maxCode+1);
+    state.meta.nextItemNo = code + 1;
+    dish = { id: uid(), order: state.dishes.reduce((m,d)=>Math.max(m,d.order||0),-1)+1, code };
+  }
+  dish.name = name;
+  dish.description = document.getElementById('dishDesc').value.trim();
+  dish.categoryId = categoryId;
+  dish.active = document.getElementById('dishActive').checked;
+  dish.tags = [...dishSelectedTags];
+  const lkr = document.getElementById('dishPriceLkr').value;
+  const usd = document.getElementById('dishPriceUsd').value;
+  dish.price = { lkr: lkr ? Number(lkr) : undefined, usd: usd ? Number(usd) : undefined };
+
+  const validSubOptions = dishSubOptions.filter(o => o.name && o.name.trim());
+  dish.subOptions = validSubOptions.length
+    ? validSubOptions.map(o => ({
+        name: o.name.trim(),
+        price: { lkr: o.lkr ? Number(o.lkr) : undefined, usd: o.usd ? Number(o.usd) : undefined }
+      }))
+    : undefined;
+
+  if (!editingDishId) state.dishes.push(dish);
+
+  if (dishPendingImageBlob && folderIds.dishImages){
+    toast('Uploading photo…');
+    try{
+      const oldImage = dish.imageFileId;
+      dish.imageFileId = await uploadImageBlob(folderIds.dishImages, dishPendingImageBlob, `${dish.id}-${Date.now()}.webp`);
+      if (oldImage){
+        if (!folderIds.deleted) saveNotes.push('old photo left in DishImages — Deleted Images folder not found');
+        else { try{ await moveFile(oldImage, folderIds.dishImages, folderIds.deleted); }
+               catch(e){ console.error(e); saveNotes.push('old photo not moved to Deleted Images — ' + e.message.slice(0,100)); } }
+      }
+    }catch(err){ toast('Photo upload failed: ' + err.message); }
+  }
+
+  closeDishModal(); renderDishSection(); renderCategories();
+  await persist();
+};
+document.getElementById('deleteDishBtn').onclick = async () => {
+  if (!confirm('Delete this dish? This cannot be undone.')) return;
+  const dish = state.dishes.find(d=>d.id===editingDishId);
+  if (dish?.imageFileId){
+    if (!folderIds.deleted || !folderIds.dishImages) saveNotes.push('photo left in DishImages — Deleted Images folder not found');
+    else { try{ await moveFile(dish.imageFileId, folderIds.dishImages, folderIds.deleted); }
+           catch(e){ console.error(e); saveNotes.push('photo not moved to Deleted Images — ' + e.message.slice(0,100)); } }
+  }
+  state.dishes = state.dishes.filter(d=>d.id!==editingDishId);
+  closeDishModal(); renderDishSection(); renderCategories();
+  await persist();
+};
+
+/* ==========================================================================
+   PROFILE
+   ========================================================================== */
+function renderProfile(){
+  const p = state.profile;
+  document.getElementById('pName').value = p.name||'';
+  document.getElementById('pPhone').value = p.phone||'';
+  document.getElementById('pCity').value = p.city||'';
+  document.getElementById('pCountry').value = p.country||'';
+  document.getElementById('logoDrop').innerHTML = p.logoFileId
+    ? `<img src="https://drive.google.com/thumbnail?id=${p.logoFileId}&sz=w300">` : `<div class="ph">🖼️</div><div class="hint">Click to upload logo</div>`;
+  document.getElementById('bannerDrop').innerHTML = p.bannerFileId
+    ? `<img src="https://drive.google.com/thumbnail?id=${p.bannerFileId}&sz=w600">` : `<div class="ph">🖼️</div><div class="hint">Click to upload banner</div>`;
+}
+dropzoneHandler(document.getElementById('logoDrop'), document.getElementById('logoInput'), blob => logoPendingBlob = blob);
+dropzoneHandler(document.getElementById('bannerDrop'), document.getElementById('bannerInput'), blob => bannerPendingBlob = blob);
+
+document.getElementById('saveProfileBtn').onclick = async () => {
+  state.profile.name = document.getElementById('pName').value.trim();
+  state.profile.phone = document.getElementById('pPhone').value.trim();
+  state.profile.city = document.getElementById('pCity').value.trim();
+  state.profile.country = document.getElementById('pCountry').value.trim();
+
+  const uploadTo = folderIds.dishImages || CONFIG.GUEST_FOLDER_ID;
+  if (logoPendingBlob){
+    toast('Uploading logo…');
+    state.profile.logoFileId = await uploadImageBlob(uploadTo, logoPendingBlob, `logo-${Date.now()}.webp`);
+    logoPendingBlob = null;
+    qrLogoBitmap = undefined;
+  }
+  if (bannerPendingBlob){
+    toast('Uploading banner…');
+    state.profile.bannerFileId = await uploadImageBlob(uploadTo, bannerPendingBlob, `banner-${Date.now()}.webp`);
+    bannerPendingBlob = null;
+  }
+  await persist();
+  renderProfile();
+  renderBrand();
+};
+
+/* ==========================================================================
+   SETTINGS
+   ========================================================================== */
+function renderSettings(){
+  document.getElementById('settAcceptToggle').checked = state.settings.acceptingOrders !== false;
+  document.getElementById('kitchenOpen').value = state.settings.kitchenOpen || '06:00';
+  document.getElementById('kitchenClose').value = state.settings.kitchenClose || '23:00';
+  document.getElementById('sameDayCutoff').value = state.settings.sameDayCutoff || '19:00';
+  document.getElementById('lastDining').value = state.settings.lastDining || '21:00';
+  document.getElementById('unitLabel').value = state.settings.unitLabel || 'Room';
+  document.getElementById('mealBreakfast').value = state.settings.breakfastTime || '07:30';
+  document.getElementById('mealLunch').value = state.settings.lunchTime || '12:30';
+  document.getElementById('mealDinner').value = state.settings.dinnerTime || '19:30';
+  document.getElementById('askDiningToggle').checked = state.settings.askDiningTime !== false;
+  document.getElementById('perItemToggle').checked = state.settings.perItemWhen !== false;
+  document.getElementById('ordEmail').value = (state.settings.orders||{}).email || '';
+  document.getElementById('ordWhatsapp').value = (state.settings.orders||{}).whatsapp || '';
+  document.getElementById('colorPrimary').value = state.settings.theme.primary;
+  document.getElementById('colorSecondary').value = state.settings.theme.secondary;
+  document.getElementById('colorPrimaryHex').value = state.settings.theme.primary;
+  document.getElementById('colorSecondaryHex').value = state.settings.theme.secondary;
+  renderRooms();
+  renderGroupLabels();
+  document.getElementById('whatsNewVersion').textContent = 'v' + CONFIG.APP_VERSION;
+  document.getElementById('whatsNewSummary').textContent = CONFIG.WHATS_NEW_LATEST || '';
+  renderTagPicker(document.getElementById('tagManageList'), []); // display-only list below
+  document.getElementById('tagManageList').innerHTML = state.tags.map(t=>
+    `<span class="tag-chip selected">${t} <span data-del="${t}" style="cursor:pointer;margin-left:4px;">×</span></span>`
+  ).join('');
+  document.getElementById('tagManageList').querySelectorAll('[data-del]').forEach(x=>{
+    x.onclick = async () => {
+      state.tags = state.tags.filter(t=>t!==x.dataset.del);
+      renderSettings();
+      await persist(false);
+    };
+  });
+}
+document.getElementById('colorPrimary').oninput = e => { document.getElementById('colorPrimaryHex').value = e.target.value; document.documentElement.style.setProperty('--brand-1', e.target.value); };
+document.getElementById('colorSecondary').oninput = e => { document.getElementById('colorSecondaryHex').value = e.target.value; document.documentElement.style.setProperty('--brand-2', e.target.value); };
+[['Primary','--brand-1'],['Secondary','--brand-2']].forEach(([n,v]) => {     // type or paste a hex code instead of using the picker
+  const h = document.getElementById('color'+n+'Hex');
+  const norm = () => { let x = h.value.trim().replace(/\s+/g,''); if (x && x[0] !== '#') x = '#' + x;
+    if (/^#[0-9a-fA-F]{3}$/.test(x)) x = '#' + x.slice(1).split('').map(c => c + c).join('');
+    return /^#[0-9a-fA-F]{6}$/.test(x) ? x.toLowerCase() : null; };
+  const apply = () => { const x = norm(); if (x){ document.getElementById('color'+n).value = x; document.documentElement.style.setProperty(v, x); } return x; };
+  h.oninput = apply;
+  h.onpaste = () => setTimeout(() => { const x = apply(); if (x) h.value = x; }, 0);
+  h.onfocus = () => h.select();
+  h.onchange = h.onblur = () => { const x = apply(); h.value = x || document.getElementById('color'+n).value; };
+});
+function renderRooms(){
+  const rs = state.settings.rooms || [], el = document.getElementById('roomManageList');
+  el.innerHTML = rs.map(r => `<span class="tag-chip selected">${esc(r)} <span data-delroom="${esc(r)}" style="cursor:pointer;margin-left:4px;">×</span></span>`).join('') || '<span class="hint">No rooms added yet — guests will type their room number.</span>';
+  el.querySelectorAll('[data-delroom]').forEach(x => { x.onclick = async () => { state.settings.rooms = rs.filter(r => r !== x.dataset.delroom); renderRooms(); await persist(false); }; });
+}
+document.getElementById('addRoomBtn').onclick = async () => {
+  const inp = document.getElementById('newRoomInput'), add = inp.value.split(',').map(s => s.trim().slice(0,30)).filter(Boolean);
+  if (!add.length) return;
+  const rs = state.settings.rooms || [];
+  add.forEach(r => { if (!rs.includes(r)) rs.push(r); });
+  rs.sort((x,y) => x.localeCompare(y, undefined, {numeric:true}));
+  state.settings.rooms = rs; inp.value = ''; renderRooms(); await persist(false);
+};
+function renderGroupLabels(){
+  const gs = state.settings.groupLabels || [], el = document.getElementById('groupLabelManageList');
+  el.innerHTML = gs.map(r => `<span class="tag-chip selected">${esc(r)} <span data-delgroup="${esc(r)}" style="cursor:pointer;margin-left:4px;">×</span></span>`).join('') || '<span class="hint">None added — guests won\'t see a group option.</span>';
+  el.querySelectorAll('[data-delgroup]').forEach(x => { x.onclick = async () => { state.settings.groupLabels = gs.filter(r => r !== x.dataset.delgroup); renderGroupLabels(); await persist(false); }; });
+}
+document.getElementById('addGroupLabelBtn').onclick = async () => {
+  const inp = document.getElementById('newGroupLabelInput'), add = inp.value.split(',').map(s => s.trim().slice(0,20)).filter(Boolean);
+  if (!add.length) return;
+  const gs = state.settings.groupLabels || [];
+  add.forEach(r => { if (!gs.some(x => x.toLowerCase() === r.toLowerCase())) gs.push(r); });
+  state.settings.groupLabels = gs; inp.value = ''; renderGroupLabels(); await persist(false);
+};
+document.getElementById('addTagBtn').onclick = async () => {
+  const v = document.getElementById('newTagInput').value.trim();
+  if (!v) return;
+  if (!state.tags.includes(v)) state.tags.push(v);
+  document.getElementById('newTagInput').value = '';
+  renderSettings();
+  await persist(false);
+};
+document.getElementById('previewGuestBtn').onclick = () => window.open(CONFIG.GUEST_MENU_URL + (CONFIG.GUEST_MENU_URL.includes('?') ? '&' : '?') + 'preview=' + Date.now(), '_blank');
+document.getElementById('saveSettingsBtn').onclick = async () => {
+  state.settings.acceptingOrders = document.getElementById('settAcceptToggle').checked;
+  state.settings.kitchenOpen = document.getElementById('kitchenOpen').value;
+  state.settings.kitchenClose = document.getElementById('kitchenClose').value;
+  state.settings.sameDayCutoff = document.getElementById('sameDayCutoff').value;
+  state.settings.lastDining = document.getElementById('lastDining').value;
+  state.settings.unitLabel = document.getElementById('unitLabel').value.trim() || 'Room';
+  state.settings.breakfastTime = document.getElementById('mealBreakfast').value || '07:30';
+  state.settings.lunchTime = document.getElementById('mealLunch').value || '12:30';
+  state.settings.dinnerTime = document.getElementById('mealDinner').value || '19:30';
+  state.settings.askDiningTime = document.getElementById('askDiningToggle').checked;
+  state.settings.perItemWhen = document.getElementById('perItemToggle').checked;
+  state.settings.orders = { email: document.getElementById('ordEmail').value.trim(), whatsapp: document.getElementById('ordWhatsapp').value.trim() };
+  state.settings.theme = {
+    primary: document.getElementById('colorPrimary').value,
+    secondary: document.getElementById('colorSecondary').value
+  };
+  applyTheme();
+  await persist();
+  renderDashboard();
+};
+
+/* ==========================================================================
+   QR CODE
+   ========================================================================== */
+function qrImageUrl(size){   // fallback only (used if the QR library could not load)
+  const color = (state.settings.theme.primary || '#000000').replace('#','');
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&color=${color}&bgcolor=ffffff&data=${encodeURIComponent(CONFIG.GUEST_MENU_URL)}`;
+}
+const MENU_TITLE = 'Guest Food & Beverage Menu';
+let qrLogoBitmap;            // undefined = not tried yet, null = none available
+let qrCardCanvas = null;
+async function getQrLogo(){
+  if (qrLogoBitmap !== undefined) return qrLogoBitmap;
+  qrLogoBitmap = null;
+  // 1) the logo uploaded in Profile (fetched with the admin sign-in so the picture can be exported)
+  if (state.profile.logoFileId){
+    try{
+      const r = await driveFetch(`https://www.googleapis.com/drive/v3/files/${state.profile.logoFileId}?alt=media`);
+      qrLogoBitmap = await createImageBitmap(await r.blob());
+      return qrLogoBitmap;
+    }catch(e){ console.warn('Profile logo not usable in QR', e); }
+  }
+  // 2) logo.png stored next to admin.html
+  try{
+    const r = await fetch('logo.png');
+    if (r.ok){ qrLogoBitmap = await createImageBitmap(await r.blob()); return qrLogoBitmap; }
+  }catch(e){}
+  return null;
+}
+function darkenHex(hex, k){
+  const h = /^#[0-9a-f]{6}$/i.test(hex) ? hex : '#4C9D38';
+  return '#' + [1,3,5].map(i => Math.round(parseInt(h.slice(i,i+2),16)*k).toString(16).padStart(2,'0')).join('');
+}
+function rrect(g, x, y, w, h, r){   // rounded rectangle path (plain rectangle on very old browsers)
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
+}
+async function buildQrCard(){
+  if (typeof qrcode === 'undefined') throw new Error('QR library not loaded');
+  const qr = qrcode(0, 'H');            // highest error correction, so a centre logo is safe
+  qr.addData(CONFIG.GUEST_MENU_URL); qr.make();
+  const n = qr.getModuleCount(), quiet = 4, W = 1000;
+  const m = Math.floor(840 / (n + 2*quiet)), sq = (n + 2*quiet) * m;
+  const x0 = Math.floor((W - sq) / 2), y0 = 40, H = y0 + sq + 250;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  // brand green, darkened so phone cameras read it reliably (pure brand green scans poorly)
+  g.fillStyle = darkenHex(state.settings.theme.primary, 0.6);
+  for (let r = 0; r < n; r++) for (let col = 0; col < n; col++)
+    if (qr.isDark(r, col)) g.fillRect(x0 + (col+quiet)*m, y0 + (r+quiet)*m, m, m);
+  // logo in the centre (about 6% of the code's area, well inside what error correction can recover)
+  const logo = await getQrLogo();
+  if (logo){
+    const L = Math.round(n*m*0.20), pad = Math.round(m*1.2), box = L + 2*pad;
+    const cx = x0 + sq/2, cy = y0 + sq/2, rad = Math.round(box*0.18);
+    g.fillStyle = '#ffffff';
+    rrect(g, cx-box/2, cy-box/2, box, box, rad); g.fill();
+    g.save();
+    rrect(g, cx-L/2, cy-L/2, L, L, Math.round(L*0.14)); g.clip();
+    const k = Math.min(L/logo.width, L/logo.height), dw = logo.width*k, dh = logo.height*k;
+    g.drawImage(logo, cx-dw/2, cy-dh/2, dw, dh);
+    g.restore();
+  }
+  // title lines under the code
+  try{ await document.fonts.load('700 54px Manrope'); await document.fonts.load('600 38px Manrope'); }catch(e){}
+  const name = state.profile.name || CONFIG.RESTAURANT_NAME_FALLBACK;
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  const line = (text, weight, size, color, y) => {
+    let px = size;
+    do { g.font = `${weight} ${px}px Manrope, sans-serif`; px -= 2; } while (g.measureText(text).width > W - 100 && px > 20);
+    g.fillStyle = color; g.fillText(text, W/2, y);
+  };
+  const base = y0 + sq;
+  line(name,        700, 56, '#1b231c', base + 75);
+  line(MENU_TITLE,  600, 40, '#3f4f42', base + 135);
+  line('Scan to view menu', 500, 30, '#6b7a6c', base + 195);
+  return c;
+}
+async function renderQr(){
+  document.getElementById('qrUrlText').textContent = CONFIG.GUEST_MENU_URL;
+  const holder = document.getElementById('qrImgHolder');
+  holder.textContent = 'Preparing QR code…';
+  try{
+    qrCardCanvas = await buildQrCard();
+    qrCardCanvas.style.cssText = 'width:100%;max-width:320px;height:auto;border-radius:12px;border:1px solid var(--line);';
+    holder.replaceChildren(qrCardCanvas);
+  }catch(err){
+    console.error(err);
+    qrCardCanvas = null;
+    holder.innerHTML = `<img src="${qrImageUrl(240)}" width="220" height="220" alt="Menu QR code">`;
+    toast('Could not build the branded QR — showing the plain one.');
+  }
+}
+document.getElementById('downloadQrBtn').onclick = async () => {
+  if (qrCardCanvas){
+    qrCardCanvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.download = 'gaia-lake-menu-qr.png';
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }, 'image/png');
+    return;
+  }
+  const url = qrImageUrl(600);
+  try{
+    const blob = await fetch(url).then(r=>r.blob());
+    const a = document.createElement('a');
+    a.download = 'gaia-lake-menu-qr.png';
+    a.href = URL.createObjectURL(blob);
+    a.click();
+  }catch(err){
+    toast('Direct download blocked — opening the QR image in a new tab, right-click it → Save Image.');
+    window.open(url, '_blank');
+  }
+};
+
+/* ==========================================================================
+   INIT-ALL
+   ========================================================================== */
+function renderBrand(){
+  const mark = document.getElementById('sidebarMark');
+  mark.innerHTML = state.profile.logoFileId
+    ? `<img src="https://drive.google.com/thumbnail?id=${state.profile.logoFileId}&sz=w100">`
+    : 'GL';
+}
+
+function renderAll(){
+  renderDashboard();
+  renderCategories();
+  renderDishSection();
+  renderProfile();
+  renderSettings();
+  renderBrand();
+}
+</script>
+</body>
+</html>

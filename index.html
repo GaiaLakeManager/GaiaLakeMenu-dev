@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gaia Lake - Kandalama — Menu</title>
+<link rel="icon" type="image/png" href="Favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="guest-menu">
+
+<header id="header">
+  <button class="mode-toggle" id="modeToggle" title="Toggle dark / light mode" aria-label="Toggle dark or light mode">🌙</button>
+  <div class="head-top" id="headTop">
+    <div class="banner-wrap" id="bannerWrap"><img class="banner" id="bannerImg" style="display:none"></div>
+    <div class="head-overlay" id="headOverlay">
+      <div class="head-badge">
+        <div class="logo-sm placeholder" id="logoImg">🍃</div>
+        <div class="head-text">
+          <h1 id="restName">Loading…</h1>
+          <p class="loc" id="restLoc"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="status-block">
+    <h2 class="menu-title">Guest Food &amp; Beverage Menu</h2>
+    <div class="status-row" id="statusRow"></div>
+    <div class="hours-line" id="hoursLine"></div>
+    <div class="order-off-banner hidden" id="orderOffBanner"></div>
+    <div class="policy-note">
+      <strong>GUEST ORDERING POLICY &amp; NOTES</strong>
+      <ul>
+        <li><strong>Rise &amp; Shine Inclusions:</strong> Complimentary morning Ceylon tea or coffee and seasonal fresh fruits are included for all breakfast orders.</li>
+        <li><strong>Junior Guest Privileges:</strong> 50% off main meal rates (Breakfast/Lunch/Dinner) for all children under 12 years.</li>
+        <li><strong>Pre-order Basis:</strong> All meals are prepared fresh to order. Guests are kindly requested to place their food orders in advance.</li>
+        <li><strong>Group Selection Policy:</strong> To maintain optimal kitchen efficiency and prompt service, groups are kindly requested to select one common category / meal option per group for each meal sitting.</li>
+      </ul>
+    </div>
+  </div>
+</header>
+
+<nav><div class="tabs" id="tabs"></div></nav>
+
+<div class="wrap">
+  <div id="loadingState" class="loading"><div class="spin"></div>Loading menu…</div>
+  <div id="sections" style="display:none"></div>
+</div>
+
+<div class="cart-bar hidden" id="cartBar"><span id="cartSummary"></span><button id="openCart">Review order</button></div>
+<div class="o-back" id="orderModal"><div class="o-modal"><h2 id="orderTitle"></h2><div id="orderBody"></div></div></div>
+
+<div class="dev-footer" id="devFooter">Developed by Prasanna Kurukuladithya (Priya) | Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion">1.2</span> | Copyright © 2026. All rights reserved.</div>
+
+<script src="config.js"></script>
+<script>
+/* ---------------- version (hardcoded in config.js, updated by developer each release) ---------------- */
+document.getElementById('devVersion').textContent = CONFIG.APP_VERSION;
+if (CONFIG.ENV_LABEL){ const m = document.createElement('meta'); m.name = 'robots'; m.content = 'noindex'; document.head.appendChild(m); }
+if (CONFIG.ENV_LABEL){ const r = document.createElement('div'); r.className = 'env-ribbon'; r.textContent = CONFIG.ENV_LABEL + ' copy'; document.body.appendChild(r); }
+
+/* ---------------- theme mode ---------------- */
+const root = document.documentElement;
+const savedMode = localStorage.getItem('gl-menu-mode');
+if (savedMode) root.setAttribute('data-theme', savedMode);
+function applyModeIcon(){
+  document.getElementById('modeToggle').textContent = root.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+}
+applyModeIcon();
+document.getElementById('modeToggle').onclick = () => {
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  localStorage.setItem('gl-menu-mode', next);
+  applyModeIcon();
+};
+
+/* ---------------- helpers ---------------- */
+function driveImageUrl(fileId, size){ return fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size||800}` : ''; }
+function money(v, cur){ return v===undefined||v===null||v==='' ? '' : `${cur} ${Number(v).toLocaleString(undefined,{minimumFractionDigits: cur==='LKR'?0:2, maximumFractionDigits: cur==='LKR'?0:2})}`; }
+function esc(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function to12h(t){
+  if (!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+}
+function computeOpenStatus(settings){
+  if (!settings) return null;
+  if (settings.acceptingOrders === false) return { open:false, label:'Currently Closed' };
+  const open = settings.kitchenOpen || '06:00', close = settings.kitchenClose || '23:00';
+  const now = new Date().toLocaleString('en-GB', { timeZone:'Asia/Colombo', hour:'2-digit', minute:'2-digit', hour12:false });
+  const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+  const n = toMin(now), o = toMin(open), c = toMin(close);
+  const isOpen = o <= c ? (n >= o && n < c) : (n >= o || n < c);
+  return isOpen ? { open:true, label:'Open Now' } : { open:false, label:'Closed Now' };
+}
+
+/* ---------------- render ---------------- */
+function render(data){
+  window.MENU = data;
+  const profile = data.profile || {};
+  const settings = data.settings || {};
+  ORDERING = !!CONFIG.ORDER_SCRIPT_URL && settings.acceptingOrders !== false;
+  const theme = settings.theme || CONFIG.DEFAULT_THEME;
+  root.style.setProperty('--brand-1', theme.primary || CONFIG.DEFAULT_THEME.primary);
+  root.style.setProperty('--brand-2', theme.secondary || CONFIG.DEFAULT_THEME.secondary);
+
+  document.title = (profile.name || CONFIG.RESTAURANT_NAME_FALLBACK) + ' — Menu';
+  document.getElementById('restName').textContent = profile.name || CONFIG.RESTAURANT_NAME_FALLBACK;
+  const loc = [profile.city, profile.country].filter(Boolean).join(', ');
+  document.getElementById('restLoc').innerHTML = loc ? `📍 ${esc(loc)}` : '';
+
+  const headTop = document.getElementById('headTop');
+  const bannerImg = document.getElementById('bannerImg');
+  if (profile.bannerFileId){
+    bannerImg.src = driveImageUrl(profile.bannerFileId, 1200);
+    bannerImg.style.display = 'block';
+  } else {
+    headTop.classList.add('no-banner');
+  }
+  if (profile.logoFileId){
+    const holder = document.getElementById('logoImg');
+    holder.classList.remove('placeholder');
+    holder.innerHTML = `<img src="${driveImageUrl(profile.logoFileId,200)}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">`;
+  }
+
+  const orderingOff = settings.acceptingOrders === false;
+  const statusRow = document.getElementById('statusRow');
+  const hoursLine = document.getElementById('hoursLine');
+  const offBanner = document.getElementById('orderOffBanner');
+  statusRow.innerHTML = '';
+  if (!orderingOff){
+    const status = computeOpenStatus(settings);
+    if (status){
+      const b = document.createElement('span');
+      b.className = 'badge ' + (status.open ? 'open' : 'closed');
+      b.innerHTML = `<span class="dot"></span>${esc(status.label)}`;
+      statusRow.appendChild(b);
+    }
+  }
+  if (profile.phone){
+    const a = document.createElement('a');
+    a.className = 'call-btn'; a.href = 'tel:' + profile.phone.replace(/\s+/g,'');
+    a.innerHTML = '📞 Call';
+    statusRow.appendChild(a);
+  }
+  if (orderingOff){
+    hoursLine.textContent = '';
+    const ords = settings.orders || {};
+    const em = ords.email || CONFIG.GUEST_ORDER_EMAIL, waNum = (ords.whatsapp || profile.phone || '').replace(/\D/g,'');
+    offBanner.classList.remove('hidden');
+    offBanner.innerHTML = `<p>Online ordering is temporarily unavailable. To order, please message or email our staff with the item code, name and quantity for each item — before or after check-in.</p>
+      <div class="order-off-label">Please WhatsApp/Email</div>
+      <div class="order-off-btns">
+        ${waNum ? `<a class="btn-main" href="https://wa.me/${waNum}">WhatsApp</a>` : ''}
+        ${em ? `<a class="btn-secondary" href="mailto:${esc(em)}">Email</a>` : ''}
+      </div>`;
+  } else {
+    offBanner.classList.add('hidden');
+    offBanner.innerHTML = '';
+    const open12 = to12h(settings.kitchenOpen), close12 = to12h(settings.kitchenClose);
+    hoursLine.textContent = open12 && close12 ? `Open to Order ${open12} to ${close12}` : '';
+  }
+
+
+  const categories = (data.categories || []).map((c,i)=>({c,i}))
+    .sort((a,b)=>((a.c.order||0)-(b.c.order||0)) || (a.i-b.i)).map(x=>x.c);   // category order, ties keep saved order
+  const dishes = (data.dishes || []).filter(d => d.active !== false);
+  const tabsEl = document.getElementById('tabs');
+  const sectionsEl = document.getElementById('sections');
+  tabsEl.innerHTML = ''; sectionsEl.innerHTML = '';
+
+  if (!categories.length){
+    sectionsEl.innerHTML = '<div class="empty-state">The menu isn\'t published yet — please check back soon.</div>';
+  }
+
+  categories.forEach(cat => {
+    const items = dishes.filter(d => d.categoryId === cat.id).sort((a,b)=>((a.order||0)-(b.order||0)) || ((a.code||0)-(b.code||0)));
+    const tab = document.createElement('button');
+    tab.className = 'tab';
+    tab.textContent = `${cat.icon ? cat.icon+' ' : ''}${cat.name}`;
+    tab.dataset.cat = cat.id;
+    tab.onclick = () => document.getElementById('cat-'+cat.id).scrollIntoView({behavior:'smooth', block:'start'});
+    tabsEl.appendChild(tab);
+
+    const section = document.createElement('div');
+    section.className = 'cat-section';
+    section.id = 'cat-' + cat.id;
+    section.innerHTML = `<h2 class="cat-heading">${cat.icon?cat.icon+' ':''}${esc(cat.name)}</h2>` +
+      (items.length ? `<div class="grid">${items.map(renderCard).join('')}</div>`
+                    : `<div class="empty-state">No items in this category yet.</div>`);
+    sectionsEl.appendChild(section);
+  });
+
+  // highlight the nearest section's tab while scrolling
+  const tabButtons = [...tabsEl.querySelectorAll('.tab')];
+  if (tabButtons.length){
+    tabButtons[0].classList.add('active');
+    const io = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        if (e.isIntersecting){
+          tabButtons.forEach(t=>t.classList.toggle('active', t.dataset.cat === e.target.id.replace('cat-','')));
+        }
+      });
+    }, { rootMargin: '-96px 0px -70% 0px', threshold: 0 });
+    categories.forEach(cat => { const el = document.getElementById('cat-'+cat.id); if (el) io.observe(el); });
+  }
+
+  initOrdering();
+  document.getElementById('loadingState').style.display = 'none';
+  sectionsEl.style.display = 'block';
+}
+
+function renderCard(d){
+  const img = d.imageFileId
+    ? `<img src="${driveImageUrl(d.imageFileId,700)}" alt="${esc(d.name)}" loading="lazy">`
+    : `<div class="no-photo">🍽️</div>`;
+  const tags = (d.tags||[]).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+  const hasSubOptions = Array.isArray(d.subOptions) && d.subOptions.length > 0;
+
+  let priceCell = '';
+  let subOptionsBlock = '';
+  if (hasSubOptions){
+    subOptionsBlock = `<div class="sub-options">${d.subOptions.map(o => {
+      const oUsd = o.price && o.price.usd ? `<span class="usd">${money(o.price.usd,'USD')}</span>` : '';
+      const oLkr = o.price ? money(o.price.lkr,'LKR') : '';
+      return `<div class="sub-option-row"><span class="sub-name">${esc(o.name)}</span><span class="price">${oLkr}${oUsd}</span></div>${addBtn(d.code,o.name) ? `<div class="sub-add">${addBtn(d.code,o.name)}</div>` : ''}`;
+    }).join('')}</div>`;
+  } else {
+    const usd = d.price && d.price.usd ? `<span class="usd">${money(d.price.usd,'USD')}</span>` : '';
+    const lkr = d.price ? money(d.price.lkr,'LKR') : '';
+    priceCell = `<span class="price">${lkr}${usd}</span>`;
+  }
+
+  const code = d.code ? `<span class="item-code">#${String(d.code).padStart(3,'0')}</span>` : '';
+  return `<div class="card">
+    <div class="photo-wrap">${img}${tags?`<div class="tag-row">${tags}</div>`:''}${code}</div>
+    <div class="body">
+      <div class="row"><span class="name">${esc(d.name)}</span>${priceCell}</div>
+      ${d.description?`<div class="desc">${esc(d.description)}</div>`:''}
+      ${subOptionsBlock}
+      ${hasSubOptions ? '' : addBtn(d.code,'')}
+    </div>
+  </div>`;
+}
+
+/* ---------------- fetch live data ---------------- */
+async function loadMenu(){
+  if (!CONFIG.MENU_FILE_ID || CONFIG.GOOGLE_API_KEY.startsWith('PASTE_')){
+    document.getElementById('loadingState').innerHTML =
+      '<div class="empty-state">Menu isn\'t connected yet — an administrator needs to finish setup (config.js).</div>';
+    return;
+  }
+  try{
+    const url = `https://www.googleapis.com/drive/v3/files/${CONFIG.MENU_FILE_ID}?alt=media&key=${CONFIG.GOOGLE_API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    render(data);
+  }catch(err){
+    console.error('Failed to load menu:', err);
+    document.getElementById('loadingState').innerHTML =
+      `<div class="empty-state">Couldn't load the menu right now (${esc(err.message)}). Please try again in a moment, or ask a staff member for a printed menu.</div>`;
+  }
+}
+loadMenu();
+</script>
+<script src="orders.js"></script>
+</body>
+</html>
