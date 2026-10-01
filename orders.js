@@ -49,8 +49,8 @@ function isGroupRoom(v){ return (menuData().settings || {}).groupLabels?.some(g 
 const SET = () => menuData().settings || {};
 const unitLbl = () => (SET().unitLabel || '').trim() || 'Room';        // what the stay field is called (Room / Villa / Cottage …) — set by admin
 const phoneTxt = () => { const p = (menuData().profile || {}).phone; return p ? ' on ' + p : ''; };
-const askWhen = () => SET().askDiningTime !== false;                 // Admin switch: ask guests for a dining date & time
-const perItem = () => askWhen() && SET().perItemWhen !== false;      // Admin switch: optional different date/time per item
+const askWhen = () => true;                                          // guests are always asked for a date
+const perItem = () => SET().perItemWhen !== false;                   // ONE admin switch: a date for each item (on) or one date for the whole order (off)
 const fixedMeal = c => { const k = catOf(c); return !k ? '' : (k.meal !== undefined ? k.meal : (k.bfOnly !== undefined ? (k.bfOnly ? 'B' : '') : (k.bbIncluded ? 'B' : ''))); };   // category fixed to B / L / D, or '' = guest chooses
 const MEALS = { B:'Breakfast', L:'Lunch', D:'Dinner' };
 const mealTime = m => ({ B:SET().breakfastTime || '07:30', L:SET().lunchTime || '12:30', D:SET().dinnerTime || '19:30' })[m] || '';

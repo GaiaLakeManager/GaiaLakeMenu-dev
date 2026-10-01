@@ -1,5 +1,9 @@
 # Gaia Lake Menu — What's New
 
+## v2.0.6 — 1 Oct 2026
+- **One date switch.** The two Admin switches ("Ask guests for a dining date & time" and "Allow a different date/time for individual items") are combined into one: **Date for each item**. On = every item has its own "Please select date" picker; off = the guest picks one date for the whole order. The "no date at all" option is removed, so guests are always asked for a date and the Breakfast/Lunch/Dinner category rules always apply. An old saved "ask for date" setting is ignored and cleared the next time Settings is saved.
+- Update `Code.gs` in Apps Script and deploy a New version.
+
 ## v2.0.5 — 1 Oct 2026
 - **Per-item date.** When "Allow a different date/time for individual items" is on, every item shows its own "Please select date" picker (no longer optional) and the single order date is hidden. Items from "Any time" categories also get their own Breakfast / Lunch / Dinner choice. "For Breakfast / Lunch / Dinner" now sits beside the quantity, only for items from those categories. More space between the date picker and the date shown, and the Bed & Breakfast tick box lines up with its text.
 - **"For Breakfast / Lunch / Dinner" shows beside the quantity**, only for items from those categories (nothing is shown for "Any time" items).

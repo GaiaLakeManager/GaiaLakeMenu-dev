@@ -26,7 +26,7 @@ function doPost(e){
     const S = menu.settings || {};
     if (S.acceptingOrders === false) return reject('Ordering is paused right now — please call us.');
     const nowSL = Utilities.formatDate(new Date(), 'Asia/Colombo', 'HH:mm'), today = Utilities.formatDate(new Date(), 'Asia/Colombo', 'yyyy-MM-dd');
-    const ask = S.askDiningTime !== false, slot = { B:S.breakfastTime || '07:30', L:S.lunchTime || '12:30', D:S.dinnerTime || '19:30' };
+    const ask = true, slot = { B:S.breakfastTime || '07:30', L:S.lunchTime || '12:30', D:S.dinnerTime || '19:30' };
     const cutoff = S.sameDayCutoff || '19:00', openT = S.kitchenOpen || '06:00', lastT = S.lastDining || '21:00';
     const minDate = nowSL >= cutoff ? Utilities.formatDate(new Date(Date.now() + 86400000), 'Asia/Colombo', 'yyyy-MM-dd') : today;
     const dt = /^\d{4}-\d{2}-\d{2}$/, tm = /^\d{2}:\d{2}$/;

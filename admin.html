@@ -149,12 +149,8 @@
             <div class="field"><label>Dinner serving time</label><input type="time" id="mealDinner"></div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;margin:4px 0 12px;">
-            <label class="switch"><input type="checkbox" id="askDiningToggle"><span class="slider"></span></label>
-            <span class="hint"><b>Ask guests for a dining date &amp; time.</b> When off, guests just send the order with no date or time (the breakfast-only rule then cannot apply).</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px;">
             <label class="switch"><input type="checkbox" id="perItemToggle"><span class="slider"></span></label>
-            <span class="hint"><b>Allow a different date/time for individual items.</b> When on, every item in the order window has its own "Please select date" picker and the single order date is hidden. When off, the guest picks one date for the whole order.</span>
+            <span class="hint"><b>Date for each item.</b> When on, every item in the order window has its own "Please select date" picker. When off, the guest picks one date for the whole order. Guests always see just one of the two.</span>
           </div>
           <div class="hint" style="margin-bottom:10px;">Serving times are not shown to guests (they can write a special time in the order Note); they are only used to refuse a meal that has already passed today. Categories set to Breakfast, Lunch or Dinner only are always served at that meal's time: the guest picks just the date and sees e.g. "For Lunch".</div>
           <div class="hint">Times are in Sri Lanka time (Asia/Colombo), regardless of a guest's own timezone. After the cutoff, guests can no longer choose today as the dining date (tomorrow onward still works). The dining time picker only allows Kitchen Opens through Latest dining time; anything outside that, guests are asked to write in the order Note instead. An order sent while the kitchen is closed still goes through, but the alert to you is marked so staff know it wasn't seen live.</div>
@@ -1059,7 +1055,6 @@ function renderSettings(){
   document.getElementById('mealBreakfast').value = state.settings.breakfastTime || '07:30';
   document.getElementById('mealLunch').value = state.settings.lunchTime || '12:30';
   document.getElementById('mealDinner').value = state.settings.dinnerTime || '19:30';
-  document.getElementById('askDiningToggle').checked = state.settings.askDiningTime !== false;
   document.getElementById('perItemToggle').checked = state.settings.perItemWhen !== false;
   document.getElementById('ordEmail').value = (state.settings.orders||{}).email || '';
   document.getElementById('ordWhatsapp').value = (state.settings.orders||{}).whatsapp || '';
@@ -1140,7 +1135,7 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
   state.settings.breakfastTime = document.getElementById('mealBreakfast').value || '07:30';
   state.settings.lunchTime = document.getElementById('mealLunch').value || '12:30';
   state.settings.dinnerTime = document.getElementById('mealDinner').value || '19:30';
-  state.settings.askDiningTime = document.getElementById('askDiningToggle').checked;
+  delete state.settings.askDiningTime;                                  // retired: guests are always asked for a date
   state.settings.perItemWhen = document.getElementById('perItemToggle').checked;
   state.settings.orders = { email: document.getElementById('ordEmail').value.trim(), whatsapp: document.getElementById('ordWhatsapp').value.trim() };
   state.settings.theme = {
