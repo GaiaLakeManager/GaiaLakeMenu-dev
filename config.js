@@ -65,6 +65,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "2.0.4",
-  WHATS_NEW_LATEST: "Each category can be fixed to Breakfast, Lunch or Dinner (guest picks only the date). Group orders are limited to one category per meal sitting. Room names are shown exactly as entered, with an admin-set field name. New serving-time and dining date/time switches. Clear date/time format on order forms."
+  APP_VERSION: "2.0.5",
+  WHATS_NEW_LATEST: "Each item now has its own required date when per-item dates are on. Group orders: only one item per Breakfast, Lunch or Dinner sitting. For Breakfast/Lunch/Dinner shows beside the quantity. Clearer date spacing and tick-box alignment. Category meals, serving times and Junior wording from 2.0.4."
 };

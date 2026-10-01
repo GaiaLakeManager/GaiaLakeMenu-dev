@@ -371,13 +371,33 @@ body.guest-menu{padding-bottom:calc(70px + env(safe-area-inset-bottom,0px));}
 
 .o-modal input,.o-modal select,.o-modal textarea{font-size:16px !important;min-width:0;box-sizing:border-box;min-height:42px;}
 .o-modal textarea{min-height:64px;resize:vertical;}
-.o-modal input[type=date],.o-modal input[type=time]{-webkit-appearance:none;appearance:none;}
+.o-modal input[type=date],.o-modal input[type=time]{text-align:left;min-height:42px;}
+.dt{display:block;}
+.fmt{display:block;font-size:.74rem;font-weight:600;color:var(--ink-soft);margin-top:3px;}
+.fh{font-style:normal;font-weight:500;color:var(--ink-soft);}
+.bf-badge{display:inline-block;background:var(--brand-1);color:#fff;border-radius:999px;padding:2px 9px;font-size:.7rem;font-weight:800;margin-right:6px;}
+.o-bf{background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:.84rem;font-weight:600;margin-bottom:10px;}
 .ol-when{margin-top:8px;}
 .ol-when-in{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
-.ol-when-in input{flex:1 1 130px;width:auto !important;margin:0 !important;min-height:38px !important;font-size:14px !important;}
+.ol-when-in .dt,.ol-when-in select{flex:1 1 130px;}
+.ol-when-in select{width:auto !important;margin:0 !important;min-height:38px !important;font-size:14px !important;}
+.ol-when-in .dt input{width:100% !important;margin:0 !important;min-height:38px !important;font-size:14px !important;}
 .o-total small,.rv-l small.usd{font-weight:500;color:var(--ink-soft);}
 .o-btns{flex-wrap:wrap;}
 .btn-ghost.danger{color:var(--danger);border-color:var(--danger);margin-right:auto;}
 @media (max-width:420px){ .o-grid{grid-template-columns:1fr;gap:0;} .o-btns .btn-main{flex:1 1 100%;order:-1;} .o-btns .btn-ghost{flex:1 1 auto;} .cart-bar{left:8px;right:8px;} }
 @media (min-width:900px){ .o-modal{max-width:600px;margin-top:4vh;padding:26px 26px;} .o-back{padding-top:2vh;} }
 .hex-in{width:104px;font-family:monospace;text-transform:uppercase;}
+
+.env-ribbon{position:fixed;top:4px;left:4px;z-index:999;background:#c0392b;color:#fff;font:800 .68rem 'Manrope',sans-serif;padding:3px 9px;border-radius:999px;pointer-events:none;letter-spacing:.04em;}
+
+/* v2.0.4 order window: per-item date, inline "For <meal>", spacing, tick alignment */
+.for-tag{margin:0 auto;font-size:.82rem;font-weight:700;color:var(--ink);white-space:nowrap;}
+.ol-when{margin-top:10px;font-size:.85rem;}
+.ol-when-lbl{font-size:.78rem;font-weight:700;color:var(--ink);margin:0 0 5px;}
+.dt-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:10px;}
+.dt-row input{width:auto !important;margin:0 !important;min-height:38px !important;font-size:14px !important;}
+.dt-row .fmt{margin:0;font-size:.8rem;}
+.ol-when select.om{width:100% !important;margin:0 0 8px !important;min-height:38px !important;font-size:14px !important;}
+.bb-box{align-items:flex-start;gap:10px;line-height:1.4;}
+.bb-box input{width:18px;height:18px;margin:.5px 0 0;flex:0 0 auto;}
