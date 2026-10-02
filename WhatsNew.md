@@ -1,5 +1,13 @@
 # Gaia Lake Menu — What's New
 
+## v2.0.7 — 2 Oct 2026
+- **Serve for is Breakfast, Lunch or Dinner only.** The "Specific time" choice and the time picker are gone. A special time (late lunch on arrival, early breakfast on check-out) goes in the Note and staff confirm. The server also refuses any clock time.
+- **Group orders:** the always-on group note and the group note in the Review window are removed. The message "Group orders can include only one item for each Breakfast sitting (date)…" now appears only when the rule is broken.
+- **Messages sit just above the Name field** (all order errors, not only the group one), and the window scrolls to them, so guests see them on the same screen as the button.
+- **Bed & Breakfast tick box:** the box and its text are on one line and dimmed until ticked. The "If this isn't correct, your order will be billed at the full price." line appears only after ticking.
+- **Admin → Settings:** the Save Settings button is also in the top bar of the Settings page, so there is no scrolling to save.
+- Update `Code.gs` in Apps Script and deploy a New version.
+
 ## v2.0.6 — 1 Oct 2026
 - **One date switch.** The two Admin switches ("Ask guests for a dining date & time" and "Allow a different date/time for individual items") are combined into one: **Date for each item**. On = every item has its own "Please select date" picker; off = the guest picks one date for the whole order. The "no date at all" option is removed, so guests are always asked for a date and the Breakfast/Lunch/Dinner category rules always apply. An old saved "ask for date" setting is ignored and cleared the next time Settings is saved.
 - Update `Code.gs` in Apps Script and deploy a New version.

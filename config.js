@@ -65,6 +65,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "2.0.6",
-  WHATS_NEW_LATEST: "One date switch in Admin: a date for each item, or one date for the whole order. Guests are always asked for a date, so the breakfast/lunch/dinner rules always apply."
+  APP_VERSION: "2.0.7",
+  WHATS_NEW_LATEST: "Guests choose Breakfast, Lunch or Dinner only (no clock time). Group-order message shows only when the rule is broken, just above the name field. Bed & Breakfast tick box is on one line and dim until ticked. Save Settings now sits in the top bar of the Settings page."
 };

@@ -401,3 +401,8 @@ body.guest-menu{padding-bottom:calc(70px + env(safe-area-inset-bottom,0px));}
 .ol-when select.om{width:100% !important;margin:0 0 8px !important;min-height:38px !important;font-size:14px !important;}
 .bb-box{align-items:flex-start;gap:10px;line-height:1.4;}
 .bb-box input{width:18px;height:18px;margin:.5px 0 0;flex:0 0 auto;}
+
+/* v2.0.7 Bed & Breakfast tick: one line, dim until ticked */
+.bb-box{display:flex;align-items:center;gap:10px;opacity:.55;transition:opacity .15s;}
+.bb-box.on{opacity:1;}
+.bb-box span{font-size:.82rem;line-height:1.35;}

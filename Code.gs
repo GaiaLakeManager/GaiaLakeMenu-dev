@@ -47,16 +47,13 @@ function doPost(e){
       let date = '', time = '', meal = '';
       if (ask){
         date = it.d || o.date;
-        meal = catMeal[d.categoryId] || String(it.m || o.meal || ((it.t || o.time) ? 'T' : ''));   // a fixed-meal category is always served at that meal's time
-        if (['B','L','D','T'].indexOf(meal) < 0) return reject('Please choose Breakfast, Lunch, Dinner or a specific time.');
-        time = meal === 'T' ? (it.t || o.time) : slot[meal];
+        meal = catMeal[d.categoryId] || String(it.m || o.meal || '');   // a fixed-meal category is always served at that meal's time
+        if (['B','L','D'].indexOf(meal) < 0) return reject('Please choose Breakfast, Lunch, Dinner or a specific time.');
+        time = slot[meal];                                                  // internal reference only — guests never pick a clock time
         if (!dt.test(date || '') || !tm.test(time || '') || date < today) return reject('Please check the dining date and time.');
         if (date < minDate) return reject('Same-day orders are closed for today. Please choose tomorrow or a later date.');
-        if (meal === 'T' && (time < openT || time > lastT)) return reject('Dining time must be between ' + openT + ' and ' + lastT + '. For any other time, please add a note.');
-        if (meal === 'T' && date === today && time < nowSL) return reject('That time has already passed today. Please choose a later time or another date.');
       }
       if (isGroup){                                                        // group orders: one item per Breakfast/Lunch/Dinner sitting
-        if (meal === 'T') return reject('Group orders: please choose Breakfast, Lunch or Dinner and write any special time in the Note.');
         if (ask && catMeal[d.categoryId]){
           const sk = date + '|' + meal, ik = d.code + '|' + (sub ? sub.name : '');
           if (sitting[sk] && sitting[sk] !== ik) return reject('Group orders can include only one item for each ' + MNAME[meal] + ' sitting. To order differently, please call the manager' + ((menu.profile || {}).phone ? ' on ' + menu.profile.phone : '') + '.');

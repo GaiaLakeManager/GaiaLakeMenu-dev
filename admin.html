@@ -52,6 +52,7 @@
         <h2 id="viewTitle">Dashboard</h2>
       </div>
       <div class="topbar-right">
+        <button class="btn btn-primary" id="saveSettingsTop" style="display:none;">Save Settings</button>
         <div class="who" id="whoAmI"></div>
         <button class="mode-btn" id="modeToggle" title="Toggle dark / light mode" aria-label="Toggle dark or light mode">🌙</button>
       </div>
@@ -705,8 +706,10 @@ document.querySelectorAll('.navitem[data-view]').forEach(btn=>{
     document.getElementById('viewTitle').textContent = btn.textContent.trim();
     document.getElementById('sidebar').classList.remove('open');
     if (btn.dataset.view === 'qr') renderQr();
+    document.getElementById('saveSettingsTop').style.display = btn.dataset.view === 'settings' ? '' : 'none';
   };
 });
+document.getElementById('saveSettingsTop').onclick = () => document.getElementById('saveSettingsBtn').click();
 document.getElementById('menuBtn').onclick = () => document.getElementById('sidebar').classList.toggle('open');
 
 /* ==========================================================================
