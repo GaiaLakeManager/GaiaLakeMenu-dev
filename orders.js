@@ -112,7 +112,7 @@ function showForm(err){
       <div class="ol-top"><b><span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}</b>${l.s ? `<small>${esc(l.s)}</small>` : ''}</div>
       <div class="ol-ctl"><button class="q" data-d="-1">−</button><span>${l.q}</span><button class="q" data-d="1">+</button>${askWhen() && fixedMeal(l.c) ? `<span class="for-tag">For ${MEALS[fixedMeal(l.c)]}</span>` : ''}<span class="ol-p">${(OS.f.bb && isBB(l.c)) ? 'Included (BB)' : usd(unit(l.c, l.s) * l.q)}</span><button class="q rm" data-rm="1">×</button></div>
       ${itemWhen(l)}</div>`).join('') || '<p>Your order is empty.</p>') +
-    (cartHasBB() ? `<label class="bb-box${f.bb ? ' on' : ''}"><input type="checkbox" id="fBB" ${f.bb ? 'checked' : ''}><span>On Bed &amp; Breakfast — this breakfast is included in my room rate.</span></label>${f.bb ? `<div class="hint">If this isn't correct, your order will be billed at the full price.</div>` : ''}` : '') +
+    (cartHasBB() ? `<label class="bb-box${f.bb ? ' on' : ''}" style="display:flex;flex-wrap:nowrap;align-items:center;gap:10px;margin:8px 0 4px;cursor:pointer;opacity:${f.bb ? 1 : .55};"><input type="checkbox" id="fBB" ${f.bb ? 'checked' : ''} style="display:inline-block;width:20px;height:20px;min-height:0;margin:0;padding:0;flex:0 0 20px;"><span style="flex:1 1 auto;min-width:0;font-size:.82rem;line-height:1.35;">On Bed &amp; Breakfast — this breakfast is included in my room rate.</span></label>${f.bb ? `<div class="hint">If this isn't correct, your order will be billed at the full price.</div>` : ''}` : '') +
     `<div class="o-total"><span>Total</span><b>${totalTxt()}</b></div>` + whenBlock() +
     (err ? `<div class="o-err" id="oErr">${esc(err)}</div>` : '') + `<label>Your name<input id="fName" autocomplete="name" value="${esc(f.name || '')}"></label>
     <div class="o-grid"><label>${esc(unitLbl())}${roomIn}</label><label>Phone<input id="fPhone" type="tel" autocomplete="tel" value="${esc(f.phone || '')}"></label></div>
@@ -171,21 +171,31 @@ function orderText(o){   // human-readable order + one #GLORDER line the admin p
     o.items.map(i => { const w = whenTxt(i); return `${i.q}x ${code3(i.c)} ${dishBy(i.c)?.name || ''}${i.s ? ' - ' + i.s : ''}${w ? ` (${w})` : ''}`; }).join('\n') +
     `\nTotal ${usd(o.total)}${o.planIncluded ? ' (Bed & Breakfast — breakfast included)' : ''}${o.note ? '\nNote: ' + o.note : ''}\n#GLORDER ${j}.${ck}`;
 }
+async function arrived(id){                          // asks the server whether this order was in fact saved (the reply may simply have been slow)
+  try{
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 15000);
+    const r = await fetch(CONFIG.ORDER_SCRIPT_URL + '?id=' + encodeURIComponent(id), { signal:c.signal });
+    clearTimeout(t); const j = await r.json(); return !!(j && j.found);
+  }catch(e){ return false; }
+}
 async function send(){
   const o = payload(), b = $('oSend'); b.disabled = true; b.textContent = 'Sending…';
+  const slow = setTimeout(() => { if (b.isConnected) b.textContent = 'Still sending — please wait…'; }, 8000);
   let why = '';
   for (let a = 0; a < 3; a++){                       // automatic retries; safe because the server ignores a repeated order ID
     let j = null;
     try{
-      const c = new AbortController(), t = setTimeout(() => c.abort(), 10000);
+      const c = new AbortController(), t = setTimeout(() => c.abort(), 20000);
       const r = await fetch(CONFIG.ORDER_SCRIPT_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify(o), signal:c.signal });
       clearTimeout(t); j = await r.json();
     }catch(e){ why = e.name === 'AbortError' ? 'timed out' : e.message; console.error('Order send failed:', e); }
-    if (j && j.ok){ OS.lastId = o.id; OS.id = null; showDone(o.id); return; }
-    if (j && j.reject){ showForm(j.error); return; }
+    if (j && j.reject){ clearTimeout(slow); showForm(j.error); return; }
+    if (j && j.ok){ clearTimeout(slow); OS.lastId = o.id; OS.id = null; showDone(o.id); return; }
     if (j) why = j.error || 'server error';
+    if (await arrived(o.id)){ clearTimeout(slow); OS.lastId = o.id; OS.id = null; showDone(o.id); return; }   // saved after all — never show a false failure
     if (a < 2){ b.textContent = 'Retrying…'; await new Promise(r => setTimeout(r, 1500)); }
   }
+  clearTimeout(slow);
   showFallback(o, why);
 }
 function showDone(id){

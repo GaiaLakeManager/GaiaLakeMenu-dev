@@ -1,5 +1,12 @@
 # Gaia Lake Menu — What's New
 
+## v2.0.10 — 2 Oct 2026
+- **Bed & Breakfast tick box locked to one line.** The box and its text now carry their layout directly in `orders.js`, so no stylesheet rule (and no old cached `style.css`) can push the text onto a separate line. The text is dimmed until the box is ticked; ticking it shows "If this isn't correct, your order will be billed at the full price."
+
+## v2.0.9 — 2 Oct 2026
+- **Fixed: false "Couldn't send automatically".** An order could reach Telegram and email while the guest's screen said it had not been sent, because the page gave up after 10 seconds while the server was still finishing. The page now waits up to 20 seconds per try, shows "Still sending — please wait…", and before it ever shows the failure screen it asks the server whether the order was saved; if it was, the guest gets the normal "Order sent" screen. The server answers that check from a new `doGet` in `Code.gs`. Update `Code.gs` and deploy a New version.
+- **Fixed: Bed & Breakfast tick box and text on separate lines.** An older style rule kept overriding the earlier fix; the new rule is strong enough, so the box and its text now sit on one line. Needs the new `style.css`.
+
 ## v2.0.8 — 2 Oct 2026
 - **Specific time is back.** For "Any time" categories the choice is Breakfast, Lunch, Dinner or Specific time. Choosing Specific time changes the label from "Serve for" to "Serve at" and shows a time picker with the time shown beside it (e.g. 7:30 PM). The time must be within Kitchen Opens – Latest dining time, and a time that has already passed today is refused. Items from Breakfast/Lunch/Dinner categories still take just the date. Works with both per-item dates and one date for the whole order, and is enforced on the server (`Code.gs`).
 - Update `Code.gs` in Apps Script and deploy a New version.
