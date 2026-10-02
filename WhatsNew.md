@@ -1,5 +1,9 @@
 # Gaia Lake Menu — What's New
 
+## v2.0.11 — 2 Oct 2026
+- **Faster, safer sending.** v2.0.9 made guests wait too long (up to about two minutes) before an error. Sending now waits at most about 12 seconds per try, twice at most. If the server's reply never reaches the guest's phone (the order can still arrive in Telegram and email), the page sends the same order once more without waiting for the reply; the server ignores a repeated order number, and any answer proves it received the order, so the guest sees "Order sent" with a short note instead of a false failure.
+- The "Couldn't send automatically" screen now says the order may already have reached the kitchen and asks the guest to check with staff before sending it again.
+
 ## v2.0.10 — 2 Oct 2026
 - **Bed & Breakfast tick box locked to one line.** The box and its text now carry their layout directly in `orders.js`, so no stylesheet rule (and no old cached `style.css`) can push the text onto a separate line. The text is dimmed until the box is ticked; ticking it shows "If this isn't correct, your order will be billed at the full price."
 

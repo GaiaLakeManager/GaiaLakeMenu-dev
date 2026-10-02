@@ -171,44 +171,45 @@ function orderText(o){   // human-readable order + one #GLORDER line the admin p
     o.items.map(i => { const w = whenTxt(i); return `${i.q}x ${code3(i.c)} ${dishBy(i.c)?.name || ''}${i.s ? ' - ' + i.s : ''}${w ? ` (${w})` : ''}`; }).join('\n') +
     `\nTotal ${usd(o.total)}${o.planIncluded ? ' (Bed & Breakfast — breakfast included)' : ''}${o.note ? '\nNote: ' + o.note : ''}\n#GLORDER ${j}.${ck}`;
 }
-async function arrived(id){                          // asks the server whether this order was in fact saved (the reply may simply have been slow)
-  try{
-    const c = new AbortController(), t = setTimeout(() => c.abort(), 15000);
-    const r = await fetch(CONFIG.ORDER_SCRIPT_URL + '?id=' + encodeURIComponent(id), { signal:c.signal });
-    clearTimeout(t); const j = await r.json(); return !!(j && j.found);
-  }catch(e){ return false; }
-}
+const post = async (o, manual) => {                      // manual = do not follow the reply redirect: it resolves as soon as the server has answered
+  const c = new AbortController(), t = setTimeout(() => c.abort(), 12000);
+  try{ return await fetch(CONFIG.ORDER_SCRIPT_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify(o), signal:c.signal, redirect:manual ? 'manual' : 'follow' }); }
+  finally{ clearTimeout(t); }
+};
 async function send(){
   const o = payload(), b = $('oSend'); b.disabled = true; b.textContent = 'Sending…';
-  const slow = setTimeout(() => { if (b.isConnected) b.textContent = 'Still sending — please wait…'; }, 8000);
+  const slow = setTimeout(() => { if (b.isConnected) b.textContent = 'Still sending — please wait…'; }, 6000);
+  const sent = unconfirmed => { OS.lastId = o.id; OS.id = null; showDone(o.id, unconfirmed); };
   let why = '';
-  for (let a = 0; a < 3; a++){                       // automatic retries; safe because the server ignores a repeated order ID
-    let j = null;
-    try{
-      const c = new AbortController(), t = setTimeout(() => c.abort(), 20000);
-      const r = await fetch(CONFIG.ORDER_SCRIPT_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify(o), signal:c.signal });
-      clearTimeout(t); j = await r.json();
-    }catch(e){ why = e.name === 'AbortError' ? 'timed out' : e.message; console.error('Order send failed:', e); }
-    if (j && j.reject){ clearTimeout(slow); showForm(j.error); return; }
-    if (j && j.ok){ clearTimeout(slow); OS.lastId = o.id; OS.id = null; showDone(o.id); return; }
-    if (j) why = j.error || 'server error';
-    if (await arrived(o.id)){ clearTimeout(slow); OS.lastId = o.id; OS.id = null; showDone(o.id); return; }   // saved after all — never show a false failure
-    if (a < 2){ b.textContent = 'Retrying…'; await new Promise(r => setTimeout(r, 1500)); }
-  }
-  clearTimeout(slow);
-  showFallback(o, why);
+  try{
+    for (let a = 0; a < 2; a++){                     // read the server's reply (at most twice; safe because the server ignores a repeated order ID)
+      let j = null;
+      try{ const r = await post(o, false); j = await r.json(); }
+      catch(e){ why = e.name === 'AbortError' ? 'no reply received in time' : e.message; console.error('Order send failed:', e); }
+      if (j && j.reject){ showForm(j.error); return; }
+      if (j && j.ok){ sent(false); return; }
+      if (!j) break;                                 // reply unreadable: go straight to the confirmation step below
+      why = j.error || 'server error';
+      if (a < 1){ b.textContent = 'Retrying…'; await new Promise(r => setTimeout(r, 1500)); }
+    }
+    try{                                             // same order again, without following the reply redirect: any answer means the server received it
+      const r = await post(o, true);
+      if (r.type === 'opaqueredirect' || r.ok){ sent(true); return; }
+    }catch(e){ why = why || e.message; }
+    showFallback(o, why);
+  }finally{ clearTimeout(slow); }
 }
-function showDone(id){
+function showDone(id, unconfirmed){
   const ph = (menuData().profile || {}).phone || '';
   $('orderTitle').textContent = 'Order sent ✓';
-  $('orderBody').innerHTML = `<p>Thank you, your order <b>${id}</b> has reached the kitchen. If anything is wrong, ${ph ? `call us on <a href="tel:${esc(ph.replace(/\s+/g, ''))}">${esc(ph)}</a>` : 'please contact the reception'}.</p>
+  $('orderBody').innerHTML = `<p>Thank you, your order <b>${id}</b> has reached the kitchen. If anything is wrong, ${ph ? `call us on <a href="tel:${esc(ph.replace(/\s+/g, ''))}">${esc(ph)}</a>` : 'please contact the reception'}.</p>${unconfirmed ? '<p class="hint">The confirmation reply was slow to reach your phone. If you do not hear from us shortly, please call to check.</p>' : ''}
     <div class="o-btns"><button class="btn-ghost" id="oAmend">Amend this order</button><button class="btn-main" id="oFinish">Done</button></div>`;
 }
 function showFallback(o, why){
   const t = orderText(o), s = (menuData().settings || {}).orders || {}, p = menuData().profile || {}, q = encodeURIComponent(t);
   const em = s.email || CONFIG.GUEST_ORDER_EMAIL, wa = (s.whatsapp || p.phone || '').replace(/\D/g, ''), ph = (p.phone || '').replace(/\s+/g, ''); OS.text = t;
   $('orderTitle').textContent = 'Couldn’t send automatically';
-  $('orderBody').innerHTML = `<p>Please send your order another way — the message is already written for you.</p><p class="rv-m" style="opacity:.6;font-size:.72rem">Reason: ${esc(why || 'unknown')}</p><div class="fb">
+  $('orderBody').innerHTML = `<p>We could not confirm that your order was received. It may already have reached the kitchen, so please check with our staff before sending it again. To send it another way, the message is already written for you.</p><p class="rv-m" style="opacity:.6;font-size:.72rem">Reason: ${esc(why || 'unknown')}</p><div class="fb">
     ${wa ? `<a class="btn-main" href="https://wa.me/${wa}?text=${q}">WhatsApp</a>` : ''}${em ? `<a class="btn-secondary" href="mailto:${esc(em)}?subject=${encodeURIComponent('Food order ' + o.id)}&body=${q}">Email</a>` : ''}
     ${ph ? `<a class="btn-ghost" href="sms:${ph}?&body=${q}">SMS</a><a class="btn-ghost" href="tel:${ph}">Call</a>` : ''}<button class="btn-ghost" id="oCopy">Copy text</button></div>
     <pre class="fb-t">${esc(t)}</pre><div class="o-btns"><button class="btn-ghost" id="oBack">Back</button><button class="btn-main" id="oFinish">I’ve sent it</button></div>`;

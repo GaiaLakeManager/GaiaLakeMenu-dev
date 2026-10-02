@@ -65,6 +65,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "2.0.10",
-  WHATS_NEW_LATEST: "The Bed & Breakfast tick box and its text are now fixed on one line and can no longer be changed by other styles."
+  APP_VERSION: "2.0.11",
+  WHATS_NEW_LATEST: "Sending an order no longer waits more than about 30 seconds, and if the confirmation reply is slow to reach the guest the page now confirms the order another way instead of showing a false failure."
 };
