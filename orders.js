@@ -61,9 +61,9 @@ function when(l){                                                    // effectiv
   const own = perItem(), f = OS.f, d = (own ? l.d : f.date) || minDate(), fm = fixedMeal(l.c);
   if (fm) return { d, m:fm, t:mealTime(fm) };                        // fixed-meal category: always served at that meal
   const m = (own ? l.m : f.meal) || '';
-  return { d, m, t: mealTime(m) };
+  return { d, m, t: m === 'T' ? ((own ? l.t : f.time) || '') : mealTime(m) };
 }
-const whenTxt = w => w && w.d ? [fmtDate(w.d), MEALS[w.m] ? 'For ' + MEALS[w.m] : ''].filter(Boolean).join(' · ') : '';   // meal name only — no clock time for B/L/D
+const whenTxt = w => w && w.d ? [fmtDate(w.d), MEALS[w.m] ? 'For ' + MEALS[w.m] : '', w.m === 'T' && w.t ? 'At ' + to12h(w.t) : ''].filter(Boolean).join(' · ') : '';   // meal name only for B/L/D; a clock time only for Specific time
 
 function grab(){
   if (!$('fName')) return;
@@ -82,8 +82,9 @@ function itemWhen(l){                                                // per-item
   const w = when(l), h = hours(), grp = isGroupRoom(OS.f.room);
   const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDate()}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
   if (fixedMeal(l.c)) return `<div class="ol-when">${dIn}</div>`;
-  const sel = `<div class="ol-when-lbl">Serve for</div><select class="om">${l.m ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${l.m === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}</select>`;
-  return `<div class="ol-when">${dIn}${sel}</div>`;
+  const sel = `<div class="ol-when-lbl">${l.m === 'T' ? 'Serve at' : 'Serve for'}</div><select class="om">${l.m ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${l.m === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${l.m === 'T' ? ' selected' : ''}>Specific time</option></select>`;
+  const tIn = l.m === 'T' ? `<div class="dt-row"><input type="time" class="ot" min="${h.open}" max="${h.last}" value="${l.t || ''}"><small class="fmt">${fmtOf('time', l.t)}</small></div><div class="hint">Between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
+  return `<div class="ol-when">${dIn}${sel}${tIn}</div>`;
 }
 function whenBlock(){                                                // order-level date + meal (hidden when each item has its own date)
   if (!askWhen()) return '';
@@ -92,9 +93,10 @@ function whenBlock(){                                                // order-le
   let top = '';
   if (!perItem()){
     const dIn = `<label class="dt">Dining date <em class="fh">(day / month / year)</em><input type="date" id="fDate" min="${minDate()}" value="${dv}"><small class="fmt">${fmtOf('date', dv)}</small></label>`;
-    const sel = allFx ? '' : `<label>Serve for<select id="fMeal">${meal ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${meal === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}</select></label>`;
+    const sel = allFx ? '' : `<label>${meal === 'T' ? 'Serve at' : 'Serve for'}<select id="fMeal">${meal ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${meal === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${meal === 'T' ? ' selected' : ''}>Specific time</option></select></label>`;
+    const tIn = !allFx && meal === 'T' ? `<label class="dt">Time <em class="fh">(hour : minute)</em><input type="time" id="fTime" min="${h.open}" max="${h.last}" value="${f.time || ''}"><small class="fmt">${fmtOf('time', f.time)}</small></label><div class="hint">A specific time must be between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
     const note = allFx ? `<div class="o-bf">🍽️ ${ms.length === 1 ? `For ${MEALS[ms[0]]}.` : 'Each item is served at its own meal (' + ms.map(m => MEALS[m]).join(', ') + ').'} Just choose the date.</div>` : '';
-    top = note + `<div class="o-grid">${dIn}${sel}</div>` +
+    top = note + `<div class="o-grid">${dIn}${sel}</div>${tIn}` +
       (fx.length && !allFx ? `<div class="hint">Breakfast, Lunch and Dinner menu items are always served at their own meal, on the date above.</div>` : '');
   }
   return top + `<div class="hint">Need a special time (for example a late lunch on arrival or an early breakfast on check-out)? Please write it in the Note below and our staff will confirm with you.</div>`;
@@ -132,6 +134,8 @@ function check(){
     if (w.d < minDate()) return `Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.`;
     if (!w.m) return 'Please choose Breakfast, Lunch, Dinner or a specific time.';
     if (!w.t) return 'Please choose a dining time.';
+    if (w.m === 'T' && (w.t < h.open || w.t > h.last)) return `A specific time must be between ${to12h(h.open)} and ${to12h(h.last)}. For any other time, please write your request in the Note.`;
+    if (w.m === 'T' && w.d === today() && w.t < nowHM()) return 'That time has already passed today. Please choose a later time or another date.';
   }
   if (isGroupRoom(f.room)){                                          // group orders: one item per Breakfast/Lunch/Dinner sitting
     const seen = {};

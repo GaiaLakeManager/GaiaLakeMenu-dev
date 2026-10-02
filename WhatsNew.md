@@ -1,5 +1,9 @@
 # Gaia Lake Menu — What's New
 
+## v2.0.8 — 2 Oct 2026
+- **Specific time is back.** For "Any time" categories the choice is Breakfast, Lunch, Dinner or Specific time. Choosing Specific time changes the label from "Serve for" to "Serve at" and shows a time picker with the time shown beside it (e.g. 7:30 PM). The time must be within Kitchen Opens – Latest dining time, and a time that has already passed today is refused. Items from Breakfast/Lunch/Dinner categories still take just the date. Works with both per-item dates and one date for the whole order, and is enforced on the server (`Code.gs`).
+- Update `Code.gs` in Apps Script and deploy a New version.
+
 ## v2.0.7 — 2 Oct 2026
 - **Serve for is Breakfast, Lunch or Dinner only.** The "Specific time" choice and the time picker are gone. A special time (late lunch on arrival, early breakfast on check-out) goes in the Note and staff confirm. The server also refuses any clock time.
 - **Group orders:** the always-on group note and the group note in the Review window are removed. The message "Group orders can include only one item for each Breakfast sitting (date)…" now appears only when the rule is broken.

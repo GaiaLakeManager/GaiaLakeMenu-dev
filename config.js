@@ -65,6 +65,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "2.0.7",
-  WHATS_NEW_LATEST: "Guests choose Breakfast, Lunch or Dinner only (no clock time). Group-order message shows only when the rule is broken, just above the name field. Bed & Breakfast tick box is on one line and dim until ticked. Save Settings now sits in the top bar of the Settings page."
+  APP_VERSION: "2.0.8",
+  WHATS_NEW_LATEST: "Specific time is back: guests can choose Breakfast, Lunch, Dinner or Specific time. Picking Specific time changes the label to Serve at and shows a time picker."
 };
