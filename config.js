@@ -62,7 +62,7 @@ const CONFIG = {
   ENV_LABEL: "DEV",
 
   // Guest login (v3.0): the private guestlogin.json file ID (from the Apps Script log after setupGuestLoginTest). Guest login is switched on/off in Admin → Guest Codes.
-  GUESTLOGIN_FILE_ID: "",
+  GUESTLOGIN_FILE_ID: "1Eb-KryAEqPPfbkpRA3HpDqj_o77VX78R",
   GUEST_LOGIN_FORCE: false,   // leave false; the Admin switch controls login
 
   RESTAURANT_NAME_FALLBACK: "Gaia Lake - Kandalama",
