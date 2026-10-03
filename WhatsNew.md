@@ -1,5 +1,21 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.2 — 3 Oct 2026
+- **Meal plan & ordering (login mode).** Categories included in the guest's plan (BB = breakfast, HB = breakfast + dinner, FB = breakfast, lunch + dinner, matched by each category's "Served at" setting) show an "Included in your plan" tag and are free on the order. Any-time categories are never plan-included. The Bed & Breakfast tick box is hidden.
+- **Set menus.** In Admin → Guest Codes → Edit, tick "Fixed — no selection" for any plan category: that category is hidden from the guest and replaced by the message for their plan.
+- **Check-out day.** Breakfast, Lunch and Dinner categories are hidden on the check-out day and cannot be ordered for it; drinks, snacks and other categories remain orderable until the 9:00 AM cut-off.
+- **Order dates** are limited to check-in → check-out (tomorrow instead of today after the same-day cut-off).
+- **Details locked.** Name, phone and room / group name come from the verified booking and cannot be edited. The page re-checks the login quietly before each order.
+- **Checked by the server.** Apps Script re-reads the guest's record on every order and applies the name, phone, room/group, plan, dates and set-menu rules itself, regardless of what the browser sends (`Code.gs`, `orders.js`, `login.js`, `index.html`, `guestcodes.js`).
+
+## v3.0.1 — 3 Oct 2026
+- **Admin → Guest Codes tab.** Add a guest (name, phone with country code, check-in and check-out dates, BB/HB/FB, individual room or group name) and a unique 6-character code is generated and saved to the private guest file. Each guest card has: Copy message and WhatsApp (ready-to-send login text), Edit, New code (the old code stops at once and the change is kept in History), Revoke / Reactivate, Clear device lock, and History. Search by name, phone, code or room.
+- **"Require guest login" switch** at the top of the tab turns login on or off for the whole app, with no redeploy. In `config.js`, `GUEST_LOGIN_FORCE` is now `false` and the new `GUESTLOGIN_FILE_ID` line must hold the guest file's ID (new `guestcodes.js`, `admin.html`).
+
+## v3.0.0 — 3 Oct 2026
+- **Guest login (part 1).** When login is required, guests first see a login screen: Guest Name, Phone Number (with country code) and a 6-character code from reception. Name, phone and code must all belong to the same booking; any mismatch shows one generic message. Codes work until 9:00 AM on the check-out date. After 3 wrong tries a code pauses for 15 minutes, then allows 3 more, then asks the guest to contact management; a global limit pauses everyone for a few minutes if many wrong codes are tried. The guest stays signed in on the device and is quietly re-checked each visit. Guest records are kept in a private file read only by the Apps Script (new `login.js`, `Code.gs`).
+- Not in this part yet: Admin Guest Codes tab, meal-plan tags, group device lock, check-in/checkout date limits on orders.
+
 ## v2.0.11 — 2 Oct 2026
 - **Faster, safer sending.** v2.0.9 made guests wait too long (up to about two minutes) before an error. Sending now waits at most about 12 seconds per try, twice at most. If the server's reply never reaches the guest's phone (the order can still arrive in Telegram and email), the page sends the same order once more without waiting for the reply; the server ignores a repeated order number, and any answer proves it received the order, so the guest sees "Order sent" with a short note instead of a false failure.
 - The "Couldn't send automatically" screen now says the order may already have reached the kitchen and asks the guest to check with staff before sending it again.

@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest ordering (v2.0.4). Loaded by index.html after the menu script. */
+/* Gaia Lake Menu — guest ordering (v3.0.2). Loaded by index.html after the menu script. */
 let ORDERING = false;
 const menuData = () => window.MENU || {};   // index.html stores the loaded menu in window.MENU
 const OS = { cart:new Map(), amend:null, lastId:null, id:null, f:{}, text:'' };
@@ -8,11 +8,15 @@ const nowHM = () => new Date().toLocaleTimeString('en-GB', { timeZone:'Asia/Colo
 function tomorrow(){ const d = new Date(today() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); }
 function hours(){ const s = (menuData().settings || {}); return { open:s.kitchenOpen || '06:00', close:s.kitchenClose || '22:00', cutoff:s.sameDayCutoff || '19:00', last:s.lastDining || '21:00' }; }
 const pastCutoff = () => nowHM() >= hours().cutoff;
-const minDate = () => pastCutoff() ? tomorrow() : today();          // earliest dining date a guest may still pick
+const minDate = () => { const b = pastCutoff() ? tomorrow() : today(); return GUEST && GUEST.checkin > b ? GUEST.checkin : b; };   // login mode: not before check-in          // earliest dining date a guest may still pick
+const maxDate = c => !GUEST ? '' : (c && fixedMeal(c) ? addDays(GUEST.checkout, -1) : GUEST.checkout);   // login mode: up to check-out (meals: the day before)
 function kitchenOpenNow(){ const h = hours(), n = nowHM(); return h.open <= h.close ? (n >= h.open && n < h.close) : (n >= h.open || n < h.close); }
 const dishBy = c => (menuData().dishes || []).find(d => Number(d.code) === Number(c));
 const catOf = c => (menuData().categories || []).find(x => x.id === dishBy(c)?.categoryId);
-const isBB = c => !!catOf(c)?.bbIncluded;
+const gPlan = () => GUEST ? ({ BB:['B'], HB:['B','D'], FB:['B','L','D'] }[GUEST.basis] || []) : [];   // meals included in the guest's booking basis
+const planCat = k => !!k && !!GUEST && gPlan().includes(glCatMeal(k));          // category included in the plan (login mode)
+const isBB = c => GUEST ? planCat(catOf(c)) : !!catOf(c)?.bbIncluded;
+const addDays = (v, n) => { const d = new Date(v + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const cartHasBB = () => lines().some(l => isBB(l.c));
 const code3 = c => '#' + String(c).padStart(3, '0');
 const usd = n => 'USD ' + Number(n).toFixed(2);   // all order prices are in USD; LKR conversion happens at final billing
@@ -30,28 +34,32 @@ function bar(){
 }
 function initOrdering(){
   bar();
-  try{ Object.assign(OS.f, JSON.parse(localStorage.getItem('gl-guest-details') || '{}')); }catch(e){}
+  if (GUEST){ Object.assign(OS.f, { name:GUEST.name, phone:GUEST.phone, room:GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || ''), bb:true }); }   // login mode: details come from the verified booking
+  else try{ Object.assign(OS.f, JSON.parse(localStorage.getItem('gl-guest-details') || '{}')); }catch(e){}
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('.add-btn'); if (!b) return;
   const k = b.dataset.c + '|' + b.dataset.s, l = OS.cart.get(k) || { c:b.dataset.c, s:b.dataset.s, q:0, d:'', m:'', t:'' };
   l.q = Math.min(50, l.q + 1); OS.cart.set(k, l); bar();
 });
-$('openCart').onclick = () => { showForm(); $('orderModal').classList.add('open'); document.body.classList.add('o-lock'); $('orderModal').scrollTop = 0; };
+$('openCart').onclick = async () => {
+  if (GUEST){ const s = glSaved(), r = s ? await glCall('check', s) : { ok:false, error:'Please log in again.' };   // quiet re-check before each order
+    if (!r.ok && !r.network){ glClear(); alert(r.error || 'Please log in again.'); location.reload(); return; } if (r.ok) GUEST = r.guest; }
+  showForm(); $('orderModal').classList.add('open'); document.body.classList.add('o-lock'); $('orderModal').scrollTop = 0; };
 const closeO = () => { $('orderModal').classList.remove('open'); document.body.classList.remove('o-lock'); };
 
 function roomOptions(){                                              // Room Numbers + Group/bulk-order labels, merged — dropdown only, no typing
   const s = menuData().settings || {};
   return [...(s.rooms || []), ...(s.groupLabels || [])];
 }
-function isGroupRoom(v){ return (menuData().settings || {}).groupLabels?.some(g => g.toLowerCase() === (v || '').trim().toLowerCase()); }
+function isGroupRoom(v){ if (GUEST) return !!GUEST.group; return (menuData().settings || {}).groupLabels?.some(g => g.toLowerCase() === (v || '').trim().toLowerCase()); }
 
 const SET = () => menuData().settings || {};
 const unitLbl = () => (SET().unitLabel || '').trim() || 'Room';        // what the stay field is called (Room / Villa / Cottage …) — set by admin
 const phoneTxt = () => { const p = (menuData().profile || {}).phone; return p ? ' on ' + p : ''; };
 const askWhen = () => true;                                          // guests are always asked for a date
 const perItem = () => SET().perItemWhen !== false;                   // ONE admin switch: a date for each item (on) or one date for the whole order (off)
-const fixedMeal = c => { const k = catOf(c); return !k ? '' : (k.meal !== undefined ? k.meal : (k.bfOnly !== undefined ? (k.bfOnly ? 'B' : '') : (k.bbIncluded ? 'B' : ''))); };   // category fixed to B / L / D, or '' = guest chooses
+const fixedMeal = c => { const k = catOf(c); return k ? glCatMeal(k) : ''; };   // category fixed to B / L / D, or '' = guest chooses
 const MEALS = { B:'Breakfast', L:'Lunch', D:'Dinner' };
 const mealTime = m => ({ B:SET().breakfastTime || '07:30', L:SET().lunchTime || '12:30', D:SET().dinnerTime || '19:30' })[m] || '';
 const fmtDate = v => v ? new Date(v + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric', timeZone:'UTC' }) : '';
@@ -80,7 +88,7 @@ function notices(){
 function itemWhen(l){                                                // per-item date (and meal) — shown only when the admin per-item switch is on
   if (!askWhen() || !perItem()) return '';
   const w = when(l), h = hours(), grp = isGroupRoom(OS.f.room);
-  const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDate()}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
+  const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDate()}" max="${maxDate(l.c)}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
   if (fixedMeal(l.c)) return `<div class="ol-when">${dIn}</div>`;
   const sel = `<div class="ol-when-lbl">${l.m === 'T' ? 'Serve at' : 'Serve for'}</div><select class="om">${l.m ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${l.m === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${l.m === 'T' ? ' selected' : ''}>Specific time</option></select>`;
   const tIn = l.m === 'T' ? `<div class="dt-row"><input type="time" class="ot" min="${h.open}" max="${h.last}" value="${l.t || ''}"><small class="fmt">${fmtOf('time', l.t)}</small></div><div class="hint">Between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
@@ -92,7 +100,7 @@ function whenBlock(){                                                // order-le
   const ms = [...new Set(fx.map(l => fixedMeal(l.c)))], grp = isGroupRoom(f.room);
   let top = '';
   if (!perItem()){
-    const dIn = `<label class="dt">Dining date <em class="fh">(day / month / year)</em><input type="date" id="fDate" min="${minDate()}" value="${dv}"><small class="fmt">${fmtOf('date', dv)}</small></label>`;
+    const dIn = `<label class="dt">Dining date <em class="fh">(day / month / year)</em><input type="date" id="fDate" min="${minDate()}" max="${maxDate()}" value="${dv}"><small class="fmt">${fmtOf('date', dv)}</small></label>`;
     const sel = allFx ? '' : `<label>${meal === 'T' ? 'Serve at' : 'Serve for'}<select id="fMeal">${meal ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${meal === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${meal === 'T' ? ' selected' : ''}>Specific time</option></select></label>`;
     const tIn = !allFx && meal === 'T' ? `<label class="dt">Time <em class="fh">(hour : minute)</em><input type="time" id="fTime" min="${h.open}" max="${h.last}" value="${f.time || ''}"><small class="fmt">${fmtOf('time', f.time)}</small></label><div class="hint">A specific time must be between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
     const note = allFx ? `<div class="o-bf">🍽️ ${ms.length === 1 ? `For ${MEALS[ms[0]]}.` : 'Each item is served at its own meal (' + ms.map(m => MEALS[m]).join(', ') + ').'} Just choose the date.</div>` : '';
@@ -110,12 +118,12 @@ function showForm(err){
   $('orderBody').innerHTML = notices() +
     ([...OS.cart.entries()].map(([k, l]) => `<div class="ol" data-k="${esc(k)}">
       <div class="ol-top"><b><span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}</b>${l.s ? `<small>${esc(l.s)}</small>` : ''}</div>
-      <div class="ol-ctl"><button class="q" data-d="-1">−</button><span>${l.q}</span><button class="q" data-d="1">+</button>${askWhen() && fixedMeal(l.c) ? `<span class="for-tag">For ${MEALS[fixedMeal(l.c)]}</span>` : ''}<span class="ol-p">${(OS.f.bb && isBB(l.c)) ? 'Included (BB)' : usd(unit(l.c, l.s) * l.q)}</span><button class="q rm" data-rm="1">×</button></div>
+      <div class="ol-ctl"><button class="q" data-d="-1">−</button><span>${l.q}</span><button class="q" data-d="1">+</button>${askWhen() && fixedMeal(l.c) ? `<span class="for-tag">For ${MEALS[fixedMeal(l.c)]}</span>` : ''}<span class="ol-p">${(OS.f.bb && isBB(l.c)) ? 'Included (' + (GUEST ? GUEST.basis : 'BB') + ')' : usd(unit(l.c, l.s) * l.q)}</span><button class="q rm" data-rm="1">×</button></div>
       ${itemWhen(l)}</div>`).join('') || '<p>Your order is empty.</p>') +
-    (cartHasBB() ? `<label class="bb-box${f.bb ? ' on' : ''}" style="display:flex;flex-wrap:nowrap;align-items:center;gap:10px;margin:8px 0 4px;cursor:pointer;opacity:${f.bb ? 1 : .55};"><input type="checkbox" id="fBB" ${f.bb ? 'checked' : ''} style="display:inline-block;width:20px;height:20px;min-height:0;margin:0;padding:0;flex:0 0 20px;"><span style="flex:1 1 auto;min-width:0;font-size:.82rem;line-height:1.35;">On Bed &amp; Breakfast — this breakfast is included in my room rate.</span></label>${f.bb ? `<div class="hint">If this isn't correct, your order will be billed at the full price.</div>` : ''}` : '') +
+    (!GUEST && cartHasBB() ? `<label class="bb-box${f.bb ? ' on' : ''}" style="display:flex;flex-wrap:nowrap;align-items:center;gap:10px;margin:8px 0 4px;cursor:pointer;opacity:${f.bb ? 1 : .55};"><input type="checkbox" id="fBB" ${f.bb ? 'checked' : ''} style="display:inline-block;width:20px;height:20px;min-height:0;margin:0;padding:0;flex:0 0 20px;"><span style="flex:1 1 auto;min-width:0;font-size:.82rem;line-height:1.35;">On Bed &amp; Breakfast — this breakfast is included in my room rate.</span></label>${f.bb ? `<div class="hint">If this isn't correct, your order will be billed at the full price.</div>` : ''}` : '') +
     `<div class="o-total"><span>Total</span><b>${totalTxt()}</b></div>` + whenBlock() +
-    (err ? `<div class="o-err" id="oErr">${esc(err)}</div>` : '') + `<label>Your name<input id="fName" autocomplete="name" value="${esc(f.name || '')}"></label>
-    <div class="o-grid"><label>${esc(unitLbl())}${roomIn}</label><label>Phone<input id="fPhone" type="tel" autocomplete="tel" value="${esc(f.phone || '')}"></label></div>
+    (err ? `<div class="o-err" id="oErr">${esc(err)}</div>` : '') + `<label>Your name<input id="fName" autocomplete="name"${GUEST ? ' readonly' : ''} value="${esc(f.name || '')}"></label>
+    <div class="o-grid"><label>${esc(GUEST && GUEST.group ? 'Group' : unitLbl())}${GUEST ? `<input id="fRoom" value="${esc(f.room || '')}" readonly>` : roomIn}</label><label>Phone<input id="fPhone" type="tel" autocomplete="tel"${GUEST ? ' readonly' : ''} value="${esc(f.phone || '')}"></label></div>
     <label>Note (optional)<textarea id="fNote">${esc(f.note || '')}</textarea></label>
     <input class="hp" id="fWeb" tabindex="-1" autocomplete="off" aria-hidden="true" value="${esc(f.web || '')}">
     <div class="o-btns"><button class="btn-ghost danger" id="oCancel">Cancel order</button><button class="btn-ghost" id="oClose">Go back</button><button class="btn-main" id="oReview">Review order</button></div>`;
@@ -132,6 +140,11 @@ function check(){
     if (!w.d) return 'Please choose a dining date.';
     if (w.d < today()) return 'The dining date cannot be in the past.';
     if (w.d < minDate()) return `Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.`;
+    if (GUEST){
+      if (w.d < GUEST.checkin) return `Please choose a date from your check-in date (${fmtDate(GUEST.checkin)}).`;
+      if (w.d > GUEST.checkout) return `Orders can only be placed up to your check-out date (${fmtDate(GUEST.checkout)}).`;
+      if (fixedMeal(l.c) && w.d === GUEST.checkout) return 'Breakfast, Lunch and Dinner items cannot be ordered for the check-out day. Other items can.';
+    }
     if (!w.m) return 'Please choose Breakfast, Lunch, Dinner or a specific time.';
     if (!w.t) return 'Please choose a dining time.';
     if (w.m === 'T' && (w.t < h.open || w.t > h.last)) return `A specific time must be between ${to12h(h.open)} and ${to12h(h.last)}. For any other time, please write your request in the Note.`;
@@ -153,7 +166,7 @@ function showReview(){
   const f = OS.f;
   $('orderTitle').textContent = 'Review your order';
   $('orderBody').innerHTML = notices() +
-    `<div class="rv">${lines().map(l => { const wt = whenTxt(when(l)); return `<div class="rv-l"><span>${l.q}× <span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}${l.s ? ' – ' + esc(l.s) : ''}${wt ? `<small>${esc(wt)}</small>` : ''}</span><b>${(f.bb && isBB(l.c)) ? 'Included (BB)' : usd(unit(l.c, l.s) * l.q)}</b></div>`; }).join('')}
+    `<div class="rv">${lines().map(l => { const wt = whenTxt(when(l)); return `<div class="rv-l"><span>${l.q}× <span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}${l.s ? ' – ' + esc(l.s) : ''}${wt ? `<small>${esc(wt)}</small>` : ''}</span><b>${(f.bb && isBB(l.c)) ? 'Included (' + (GUEST ? GUEST.basis : 'BB') + ')' : usd(unit(l.c, l.s) * l.q)}</b></div>`; }).join('')}
     <div class="rv-l tot"><span>Total</span><b>${totalTxt()}</b></div></div>
     <p class="rv-m"><b>${esc(f.name)}</b> · ${esc(f.room)} · ${esc(f.phone)}${f.note ? '<br>Note: ' + esc(f.note) : ''}${f.bb ? '<br><small>On Bed &amp; Breakfast — breakfast included</small>' : ''}</p>
     <div class="o-btns"><button class="btn-ghost" id="oEdit">Edit</button><button class="btn-main" id="oSend">Confirm &amp; send</button></div>`;
@@ -161,7 +174,7 @@ function showReview(){
 function payload(){
   const f = OS.f, ask = askWhen(); OS.id = OS.id || 'GL-' + Array.from({ length:6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
   return { v:2, id:OS.id, amend:OS.amend || undefined, name:f.name.trim(), room:f.room.trim(), phone:f.phone.replace(/[\s\-()]/g, ''), date:ask ? (f.date || minDate()) : '', meal:ask ? (f.meal || '') : '', time:ask ? (f.time || '') : '',
-    note:(f.note || '').trim() || undefined, total:total(), planIncluded:!!f.bb, website:f.web || '',
+    note:(f.note || '').trim() || undefined, total:total(), planIncluded:!!f.bb, gc:GUEST ? (glSaved() || {}).code : undefined, website:f.web || '',
     items:lines().map(l => { const w = when(l); return { c:Number(l.c), s:l.s || undefined, q:l.q, d:w.d || undefined, m:w.m || undefined, t:w.t || undefined }; }) };
 }
 function orderText(o){   // human-readable order + one #GLORDER line the admin paste box can read

@@ -40,6 +40,7 @@
     <button class="navitem" data-view="menu"><span class="ic">🍽️</span> Menu</button>
     <button class="navitem" data-view="profile"><span class="ic">🏠</span> Profile</button>
     <button class="navitem" data-view="settings"><span class="ic">⚙️</span> Settings</button>
+    <button class="navitem" data-view="guests"><span class="ic">🔑</span> Guest Codes</button>
     <button class="navitem" data-view="qr"><span class="ic">🔗</span> QR Code</button>
     <button class="navitem nav-signout" id="signOutBtn"><span class="ic">↩</span> Sign Out</button>
     <div class="dev-footer">Developed by Prasanna Kurukuladithya (Priya) | Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion"></span> | Copyright © 2026. All rights reserved.</div>
@@ -221,6 +222,8 @@
       </section>
 
       <!-- ---------- QR ---------- -->
+      <section id="view-guests" class="hidden"><div id="gcBody"></div></section>
+
       <section id="view-qr" class="hidden">
         <div class="qr-box">
           <div id="qrImgHolder"></div>
@@ -303,6 +306,7 @@
 <div id="toast"></div>
 
 <script src="config.js"></script>
+<script src="guestcodes.js"></script>
 <script>
 /* ---------------- version (hardcoded in config.js — same number as the guest menu) ---------------- */
 document.getElementById('devVersion').textContent = CONFIG.APP_VERSION;
@@ -706,6 +710,7 @@ document.querySelectorAll('.navitem[data-view]').forEach(btn=>{
     document.getElementById('viewTitle').textContent = btn.textContent.trim();
     document.getElementById('sidebar').classList.remove('open');
     if (btn.dataset.view === 'qr') renderQr();
+    if (btn.dataset.view === 'guests') gcOpen();
     document.getElementById('saveSettingsTop').style.display = btn.dataset.view === 'settings' ? '' : 'none';
   };
 });

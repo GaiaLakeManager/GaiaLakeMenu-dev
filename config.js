@@ -61,10 +61,14 @@ const CONFIG = {
   // DEV copy: shows a red DEV badge on every page. The live config.js keeps this empty ("").
   ENV_LABEL: "DEV",
 
+  // Guest login (v3.0): the private guestlogin.json file ID (from the Apps Script log after setupGuestLoginTest). Guest login is switched on/off in Admin → Guest Codes.
+  GUESTLOGIN_FILE_ID: "",
+  GUEST_LOGIN_FORCE: false,   // leave false; the Admin switch controls login
+
   RESTAURANT_NAME_FALLBACK: "Gaia Lake - Kandalama",
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "2.0.11",
-  WHATS_NEW_LATEST: "Sending an order no longer waits more than about 30 seconds, and if the confirmation reply is slow to reach the guest the page now confirms the order another way instead of showing a false failure."
+  APP_VERSION: "3.0.2",
+  WHATS_NEW_LATEST: "Logged-in guests now see their meal plan on the menu, can order only from check-in to check-out, and their name, phone and room are filled in automatically."
 };

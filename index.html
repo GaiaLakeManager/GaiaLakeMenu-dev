@@ -55,6 +55,7 @@
 <div class="dev-footer" id="devFooter">Developed by Prasanna Kurukuladithya (Priya) | Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion">1.2</span> | Copyright © 2026. All rights reserved.</div>
 
 <script src="config.js"></script>
+<script src="login.js"></script>
 <script>
 /* ---------------- version (hardcoded in config.js, updated by developer each release) ---------------- */
 document.getElementById('devVersion').textContent = CONFIG.APP_VERSION;
@@ -178,6 +179,7 @@ function render(data){
   }
 
   categories.forEach(cat => {
+    const gv = glCatView(cat); if (gv.hide) return;           // v3.0.2: login mode — plan tags, set menus, check-out day
     const items = dishes.filter(d => d.categoryId === cat.id).sort((a,b)=>((a.order||0)-(b.order||0)) || ((a.code||0)-(b.code||0)));
     const tab = document.createElement('button');
     tab.className = 'tab';
@@ -189,8 +191,8 @@ function render(data){
     const section = document.createElement('div');
     section.className = 'cat-section';
     section.id = 'cat-' + cat.id;
-    section.innerHTML = `<h2 class="cat-heading">${cat.icon?cat.icon+' ':''}${esc(cat.name)}</h2>` +
-      (items.length ? `<div class="grid">${items.map(renderCard).join('')}</div>`
+    section.innerHTML = `<h2 class="cat-heading">${cat.icon?cat.icon+' ':''}${esc(cat.name)}${gv.inc ? ' <span class="tag" style="font-size:.7rem;vertical-align:middle;">Included in your plan</span>' : ''}</h2>` +
+      (gv.msg ? `<div class="empty-state">${esc(gv.msg)}</div>` : items.length ? `<div class="grid">${items.map(renderCard).join('')}</div>`
                     : `<div class="empty-state">No items in this category yet.</div>`);
     sectionsEl.appendChild(section);
   });
@@ -259,7 +261,7 @@ async function loadMenu(){
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    render(data);
+    glGate(data, () => render(data));          // v3.0: shows the guest login first when login is required
   }catch(err){
     console.error('Failed to load menu:', err);
     document.getElementById('loadingState').innerHTML =
