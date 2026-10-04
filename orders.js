@@ -30,12 +30,13 @@ function syncBtns(){ document.querySelectorAll('.add-btn').forEach(b => { const 
 function bar(){
   const n = lines().reduce((t, l) => t + l.q, 0);
   $('cartBar').classList.toggle('hidden', !n);
-  $('cartSummary').textContent = `${n} item${n > 1 ? 's' : ''} · ${usd(total())}`; syncBtns();
+  $('cartSummary').textContent = `${n} item${n > 1 ? 's' : ''} · ${usd(total())}`; syncBtns(); saveCart();
 }
 function initOrdering(){
   bar();
   if (GUEST){ Object.assign(OS.f, { name:GUEST.name, phone:GUEST.phone, room:GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || ''), bb:gPlan().length > 0 }); }   // login mode: details come from the verified booking
   else try{ Object.assign(OS.f, JSON.parse(localStorage.getItem('gl-guest-details') || '{}')); }catch(e){}
+  restoreCart(); bar();                                                   // v3.0.7: bring back the cart if the page was reloaded
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('.add-btn'); if (!b) return;
@@ -191,7 +192,7 @@ const post = async (o, manual) => {                      // manual = do not foll
 async function send(){
   const o = payload(), b = $('oSend'); b.disabled = true; b.textContent = 'Sending…';
   const slow = setTimeout(() => { if (b.isConnected) b.textContent = 'Still sending — please wait…'; }, 6000);
-  const sent = unconfirmed => { OS.lastId = o.id; OS.id = null; showDone(o.id, unconfirmed); };
+  const sent = unconfirmed => { OS.lastId = o.id; OS.id = null; OS.done = true; clearSavedCart(); showDone(o.id, unconfirmed); };
   let why = '';
   try{
     for (let a = 0; a < 2; a++){                     // read the server's reply (at most twice; safe because the server ignores a repeated order ID)
@@ -226,7 +227,7 @@ function showFallback(o, why){
     ${ph ? `<a class="btn-ghost" href="sms:${ph}?&body=${q}">SMS</a><a class="btn-ghost" href="tel:${ph}">Call</a>` : ''}<button class="btn-ghost" id="oCopy">Copy text</button></div>
     <pre class="fb-t">${esc(t)}</pre><div class="o-btns"><button class="btn-ghost" id="oBack">Back</button><button class="btn-main" id="oFinish">I’ve sent it</button></div>`;
 }
-function finish(){ OS.cart.clear(); OS.amend = null; OS.id = null; OS.f.date = OS.f.time = OS.f.meal = OS.f.note = ''; bar(); closeO(); }
+function finish(){ OS.done = false; clearSavedCart(); OS.cart.clear(); OS.amend = null; OS.id = null; OS.f.date = OS.f.time = OS.f.meal = OS.f.note = ''; bar(); closeO(); }
 $('orderBody').addEventListener('click', e => {
   const t = e.target, row = t.closest('.ol');
   if (t.classList.contains('q') && row){
@@ -235,7 +236,7 @@ $('orderBody').addEventListener('click', e => {
     bar(); showForm(); return;
   }
   ({ oClose:closeO, oCancel:() => { if (confirm('Cancel this order and clear all your selections?')) finish(); }, oReview:() => { grab(); const m = check(); m ? showForm(m) : showReview(); }, oEdit:() => showForm(), oSend:send,
-     oBack:showReview, oFinish:finish, oAmend:() => { OS.amend = OS.lastId; showForm(); },
+     oBack:showReview, oFinish:finish, oAmend:() => { OS.amend = OS.lastId; OS.done = false; showForm(); saveCart(); },
      oCopy:() => { navigator.clipboard?.writeText(OS.text).then(() => t.textContent = 'Copied ✓').catch(() => {}); } })[t.id]?.();
 });
 $('orderBody').addEventListener('change', e => {
@@ -285,3 +286,36 @@ $('orderModal').addEventListener('click', e => {
   const onKey = k => { if (k.key === 'Escape') close(); };
   box.onclick = close; document.addEventListener('keydown', onKey); document.body.appendChild(box);
 });
+
+/* v3.0.7 — stop Chrome's pull-to-refresh from reloading the page, and keep the cart on the phone so a reload never loses it. */
+(function(){ const s = document.createElement('style'); s.textContent = 'html,body{overscroll-behavior-y:contain}#orderModal,.o-modal{overscroll-behavior:contain}'; document.head.appendChild(s); })();
+const cartKey = () => 'gl-cart:' + (GUEST ? ((glSaved() || {}).code || 'guest') : 'open');
+function clearSavedCart(){ try{ localStorage.removeItem(cartKey()); }catch(e){} }
+function saveCart(){
+  if (!OS.restored || OS.done) return;                                     // not before the restore has run; not while a sent order is shown
+  try{
+    if (!OS.cart.size){ localStorage.removeItem(cartKey()); return; }
+    localStorage.setItem(cartKey(), JSON.stringify({ t:Date.now(), cart:[...OS.cart.entries()], f:{ date:OS.f.date || '', meal:OS.f.meal || '', time:OS.f.time || '', note:OS.f.note || '' } }));
+  }catch(e){}
+}
+function restoreCart(){
+  try{
+    const s = JSON.parse(localStorage.getItem(cartKey()) || 'null');
+    if (!s || !Array.isArray(s.cart) || Date.now() - s.t > 12 * 3600 * 1000){ if (s) clearSavedCart(); OS.restored = true; return; }
+    const mn = minDate(), mx = maxDate(); let n = 0;
+    s.cart.forEach(([k, l]) => {
+      const d = dishBy(l.c); if (!d || d.active === false) return;                                  // dish no longer on the menu
+      if (l.s ? !(d.subOptions || []).some(x => x.name === l.s) : (d.subOptions || []).length) return;   // option changed
+      const cat = catOf(l.c); if (GUEST && cat){ const v = glCatView(cat); if (v.hide || v.msg) return; }
+      if (l.d && (l.d < mn || (mx && l.d > mx))) l.d = '';                                          // date no longer allowed
+      l.q = Math.max(1, Math.min(50, Number(l.q) || 1)); OS.cart.set(k, l); n++;
+    });
+    const f = s.f || {}; Object.assign(OS.f, { date:(f.date && f.date >= mn && (!mx || f.date <= mx)) ? f.date : '', meal:f.meal || '', time:f.time || '', note:f.note || '' });
+    if (n){
+      const b = document.createElement('div'); b.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);max-width:90%;background:#1c2b22;color:#fff;padding:10px 14px;border-radius:10px;font-size:.85rem;z-index:100000;text-align:center';
+      b.textContent = 'Your previous selections were restored.'; document.body.appendChild(b); setTimeout(() => b.remove(), 3500);
+    }
+  }catch(e){}
+  OS.restored = true;
+}
+['change', 'input'].forEach(ev => $('orderBody').addEventListener(ev, () => { try{ if ($('fName')) grab(); }catch(e){} saveCart(); }));   // keep dates, meals and note saved as they are edited

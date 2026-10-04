@@ -1,5 +1,9 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.7 — 4 Oct 2026
+- **No more accidental refresh.** Swiping down at the top of the page on a phone (Chrome's pull-to-refresh) no longer reloads the menu or the order screen.
+- **Your order is kept if the page reloads.** Items, quantities, options, dates, meals and the note are saved on the phone as you go and restored automatically (a short "selections restored" message appears). Items no longer on the menu, and dates that are no longer allowed, are dropped. The saved order is cleared when the order is sent or cancelled, and after 12 hours. Each guest's order is stored separately (`orders.js`).
+
 ## v3.0.6 — 4 Oct 2026
 - **Photo on each order line.** Each item on "Your order" now shows a small photo at the bottom right, next to the date selector (items without a photo show a plate icon). **Tap the photo to see it full size** with the item number and name, then tap anywhere to close, so guests can see the dish clearly before ordering. The line does not get taller (`orders.js`).
 
