@@ -14,6 +14,7 @@ function kitchenOpenNow(){ const h = hours(), n = nowHM(); return h.open <= h.cl
 const dishBy = c => (menuData().dishes || []).find(d => Number(d.code) === Number(c));
 const catOf = c => (menuData().categories || []).find(x => x.id === dishBy(c)?.categoryId);
 const gPlan = () => GUEST ? ({ RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] }[GUEST.basis] || []) : [];   // meals included in the guest's booking basis
+const planNote = () => GUEST ? ({ BB:'On Bed & Breakfast — breakfast included', HB:'On Half Board — breakfast and dinner included', FB:'On Full Board — breakfast, lunch and dinner included' }[GUEST.basis] || '') : (OS.f.bb ? 'On Bed & Breakfast — breakfast included' : '');   // '' for Room Only
 const planCat = k => !!k && !!GUEST && gPlan().includes(glCatMeal(k));          // category included in the plan (login mode)
 const isBB = c => GUEST ? planCat(catOf(c)) : !!catOf(c)?.bbIncluded;
 const cartHasBB = () => lines().some(l => isBB(l.c));
@@ -33,7 +34,7 @@ function bar(){
 }
 function initOrdering(){
   bar();
-  if (GUEST){ Object.assign(OS.f, { name:GUEST.name, phone:GUEST.phone, room:GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || ''), bb:true }); }   // login mode: details come from the verified booking
+  if (GUEST){ Object.assign(OS.f, { name:GUEST.name, phone:GUEST.phone, room:GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || ''), bb:gPlan().length > 0 }); }   // login mode: details come from the verified booking
   else try{ Object.assign(OS.f, JSON.parse(localStorage.getItem('gl-guest-details') || '{}')); }catch(e){}
 }
 document.addEventListener('click', e => {
@@ -118,7 +119,7 @@ function showForm(err){
     ([...OS.cart.entries()].map(([k, l]) => `<div class="ol" data-k="${esc(k)}">
       <div class="ol-top"><b><span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}</b>${l.s ? `<small>${esc(l.s)}</small>` : ''}</div>
       <div class="ol-ctl"><button class="q" data-d="-1">−</button><span>${l.q}</span><button class="q" data-d="1">+</button>${askWhen() && fixedMeal(l.c) ? `<span class="for-tag">For ${MEALS[fixedMeal(l.c)]}</span>` : ''}<span class="ol-p">${(OS.f.bb && isBB(l.c)) ? 'Included (' + (GUEST ? GUEST.basis : 'BB') + ')' : usd(unit(l.c, l.s) * l.q)}</span><button class="q rm" data-rm="1">×</button></div>
-      ${itemWhen(l)}</div>`).join('') || '<p>Your order is empty.</p>') +
+      <div class="ol-bot"><div class="ol-bot-main">${itemWhen(l)}</div>${olThumb(l.c)}</div></div>`).join('') || '<p>Your order is empty.</p>') +
     (!GUEST && cartHasBB() ? `<label class="bb-box${f.bb ? ' on' : ''}" style="display:flex;flex-wrap:nowrap;align-items:center;gap:10px;margin:8px 0 4px;cursor:pointer;opacity:${f.bb ? 1 : .55};"><input type="checkbox" id="fBB" ${f.bb ? 'checked' : ''} style="display:inline-block;width:20px;height:20px;min-height:0;margin:0;padding:0;flex:0 0 20px;"><span style="flex:1 1 auto;min-width:0;font-size:.82rem;line-height:1.35;">On Bed &amp; Breakfast — this breakfast is included in my room rate.</span></label>${f.bb ? `<div class="hint">If this isn't correct, your order will be billed at the full price.</div>` : ''}` : '') +
     `<div class="o-total"><span>Total</span><b>${totalTxt()}</b></div>` + whenBlock() +
     (err ? `<div class="o-err" id="oErr">${esc(err)}</div>` : '') + `<label>Your name<input id="fName" autocomplete="name"${GUEST ? ' readonly' : ''} value="${esc(f.name || '')}"></label>
@@ -166,7 +167,7 @@ function showReview(){
   $('orderBody').innerHTML = notices() +
     `<div class="rv">${lines().map(l => { const wt = whenTxt(when(l)); return `<div class="rv-l"><span>${l.q}× <span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}${l.s ? ' – ' + esc(l.s) : ''}${wt ? `<small>${esc(wt)}</small>` : ''}</span><b>${(f.bb && isBB(l.c)) ? 'Included (' + (GUEST ? GUEST.basis : 'BB') + ')' : usd(unit(l.c, l.s) * l.q)}</b></div>`; }).join('')}
     <div class="rv-l tot"><span>Total</span><b>${totalTxt()}</b></div></div>
-    <p class="rv-m"><b>${esc(f.name)}</b> · ${esc(f.room)} · ${esc(f.phone)}${f.note ? '<br>Note: ' + esc(f.note) : ''}${f.bb ? '<br><small>On Bed &amp; Breakfast — breakfast included</small>' : ''}</p>
+    <p class="rv-m"><b>${esc(f.name)}</b> · ${esc(f.room)} · ${esc(f.phone)}${f.note ? '<br>Note: ' + esc(f.note) : ''}${planNote() ? '<br><small>' + esc(planNote()) + '</small>' : ''}</p>
     <div class="o-btns"><button class="btn-ghost" id="oEdit">Edit</button><button class="btn-main" id="oSend">Confirm &amp; send</button></div>`;
 }
 function payload(){
@@ -180,7 +181,7 @@ function orderText(o){   // human-readable order + one #GLORDER line the admin p
   const j = btoa(unescape(encodeURIComponent(JSON.stringify(clean)))), ck = [...j].reduce((h, ch) => (h * 33 + ch.charCodeAt(0)) >>> 0, 5381).toString(36);
   return `Gaia Lake food order ${o.id}${o.amend ? ' (amends ' + o.amend + ')' : ''}\n${o.name}, ${o.room}, ${o.phone}\n` +
     o.items.map(i => { const w = whenTxt(i); return `${i.q}x ${code3(i.c)} ${dishBy(i.c)?.name || ''}${i.s ? ' - ' + i.s : ''}${w ? ` (${w})` : ''}`; }).join('\n') +
-    `\nTotal ${usd(o.total)}${o.planIncluded ? ' (Bed & Breakfast — breakfast included)' : ''}${o.note ? '\nNote: ' + o.note : ''}\n#GLORDER ${j}.${ck}`;
+    `\nTotal ${usd(o.total)}${o.planIncluded && planNote() ? ' (' + planNote().replace(/^On /, '') + ')' : ''}${o.note ? '\nNote: ' + o.note : ''}\n#GLORDER ${j}.${ck}`;
 }
 const post = async (o, manual) => {                      // manual = do not follow the reply redirect: it resolves as soon as the server has answered
   const c = new AbortController(), t = setTimeout(() => c.abort(), 12000);
@@ -246,4 +247,41 @@ $('orderBody').addEventListener('change', e => {
   if (t.classList.contains('od')) l.d = t.value;
   if (t.classList.contains('ot')) l.t = t.value;
   if (t.classList.contains('om')){ grab(); l.m = t.value; showForm(); }
+});
+
+/* Date pickers: a phone can scroll to dates the PC calendar greys out. Snap any out-of-range pick to the nearest allowed date (same result as the PC). */
+let dateToastT;
+$('orderModal').addEventListener('change', e => {
+  const t = e.target; if (!t || t.type !== 'date' || !t.value) return;
+  let v = t.value; if (t.min && v < t.min) v = t.min; if (t.max && v > t.max) v = t.max;
+  if (v === t.value) return;
+  t.value = v;
+  let b = document.getElementById('dateToast');
+  if (!b){ b = document.createElement('div'); b.id = 'dateToast'; b.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);max-width:90%;background:#1c2b22;color:#fff;padding:10px 14px;border-radius:10px;font-size:.85rem;z-index:100000;text-align:center'; document.body.appendChild(b); }
+  b.textContent = 'That date isn\u2019t available — set to the nearest available date (' + fmtDate(v) + ').'; b.style.display = 'block';
+  clearTimeout(dateToastT); dateToastT = setTimeout(() => { b.style.display = 'none'; }, 3500);
+}, true);
+
+/* Photo thumbnail at the bottom-right of each order line; tap it to enlarge (v3.0.6). */
+(function(){
+  const st = document.createElement('style');
+  st.textContent = `.ol-bot{display:flex;align-items:flex-end;gap:10px}.ol-bot-main{flex:1;min-width:0}
+  .ol-th{flex:none;width:52px;height:52px;margin:8px 0 0;padding:0;border:1px solid var(--line,#e7e0d2);border-radius:8px;overflow:hidden;background:var(--paper,#fff);cursor:zoom-in;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+  .ol-th img{width:100%;height:100%;object-fit:cover;display:block}.ol-th.none{cursor:default;opacity:.55}
+  #olBox{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;cursor:zoom-out}
+  #olBox img{max-width:96vw;max-height:78vh;border-radius:12px;object-fit:contain;background:#222}#olBox .cap{color:#fff;font:600 1.05rem 'Manrope',sans-serif;text-align:center}#olBox .hint{color:#ccc;font:500 .85rem 'Manrope',sans-serif}`;
+  document.head.appendChild(st);
+})();
+function olThumb(c){
+  const d = dishBy(c) || {};
+  return d.imageFileId ? `<button type="button" class="ol-th" data-ol-img="${esc(d.imageFileId)}" data-ol-c="${esc(String(c))}" aria-label="Enlarge photo of ${esc(d.name || 'item')}"><img src="${driveImageUrl(d.imageFileId, 160)}" alt="" loading="lazy"></button>` : `<span class="ol-th none" aria-hidden="true">🍽️</span>`;
+}
+$('orderModal').addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-ol-img]'); if (!b) return;
+  const d = dishBy(Number(b.dataset.olC)) || dishBy(b.dataset.olC) || {};
+  const box = document.createElement('div'); box.id = 'olBox';
+  box.innerHTML = `<img src="${driveImageUrl(b.dataset.olImg, 1200)}" alt="${esc(d.name || '')}"><div class="cap">${d.code ? '#' + String(d.code).padStart(3, '0') + ' ' : ''}${esc(d.name || '')}</div><div class="hint">Tap anywhere to close</div>`;
+  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = k => { if (k.key === 'Escape') close(); };
+  box.onclick = close; document.addEventListener('keydown', onKey); document.body.appendChild(box);
 });

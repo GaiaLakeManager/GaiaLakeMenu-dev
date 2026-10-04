@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.4",
-WHATS_NEW_LATEST: "Admin can now delete guest records, one at a time or all expired and revoked ones at once."
+  APP_VERSION: "3.0.6",
+WHATS_NEW_LATEST: "Each item on your order now shows a small photo you can tap to enlarge, Room Only bookings are handled correctly, and the date pickers work the same on phone and PC."
 };

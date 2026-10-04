@@ -1,5 +1,12 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.6 — 4 Oct 2026
+- **Photo on each order line.** Each item on "Your order" now shows a small photo at the bottom right, next to the date selector (items without a photo show a plate icon). **Tap the photo to see it full size** with the item number and name, then tap anywhere to close, so guests can see the dish clearly before ordering. The line does not get taller (`orders.js`).
+
+## v3.0.5 — 4 Oct 2026
+- **Room Only fix.** The "Confirm and send" screen and the fallback message no longer say "breakfast included" for Room Only guests. They now show the right line for each plan (BB, HB, FB), and nothing for RO. Prices were already correct.
+- **Date pickers behave the same on phone and PC.** If a phone lets the guest scroll to a date outside the allowed range (before check-in, after check-out, or already closed), the date now snaps to the nearest allowed date with a short note, instead of showing an error (`orders.js`, `Code.gs`).
+
 ## v3.0.4 — 3 Oct 2026
 - **Delete guests.** Every guest card in Admin → Guest Codes has a Delete button (asks for confirmation; extra warning if the guest is still active). A new "Delete all expired / revoked" button clears old records in one go, so the guest file stays small and loads fast. Active guests are never touched by the bulk delete (`guestcodes.js`).
 

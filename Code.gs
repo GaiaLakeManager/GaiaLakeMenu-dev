@@ -41,7 +41,7 @@ function doPost(e){
     const bbCats = new Set((menu.categories || []).filter(c => c.bbIncluded).map(c => c.id));
     const isGroup = G ? !!G.group : (S.groupLabels || []).some(g => String(g).trim().toLowerCase() === room.toLowerCase()), sitting = {}, MNAME = { B:'Breakfast', L:'Lunch', D:'Dinner' };   // group orders: one item per Breakfast/Lunch/Dinner sitting
     const catMeal = {}; (menu.categories || []).forEach(c => { const m = (c.meal !== undefined ? c.meal : (c.bfOnly !== undefined ? (c.bfOnly ? 'B' : '') : (c.bbIncluded ? 'B' : ''))); if (m) catMeal[c.id] = m; });   // category -> fixed meal (B/L/D)
-    const planIncluded = G ? true : !!o.planIncluded;
+    const planIncluded = G ? (GL_PLAN[G.basis] || []).length > 0 : !!o.planIncluded;   // Room Only: nothing included
     let total = 0, bbValue = 0;                                            // all amounts are USD
     const items = [];
     for (const it of o.items){                                             // prices always come from the live menu, never from the guest's device

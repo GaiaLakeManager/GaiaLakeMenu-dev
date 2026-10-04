@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest login (v3.0.3). Loaded by index.html after config.js.
+/* Gaia Lake Menu — guest login (v3.0.6). Loaded by index.html after config.js.
    Verification happens in Apps Script against a private file; this page only sends name + phone + code. */
 let GUEST = null;                                   // verified guest details (name, phone, room, basis, checkin, checkout, fixed …)
 const GL_KEY = 'gl-guest-session';

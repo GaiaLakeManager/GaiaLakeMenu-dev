@@ -1,18 +1,19 @@
-/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.4). Loaded by admin.html after config.js.
+/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.6). Loaded by admin.html after config.js.
    Reads/writes the private guestlogin.json directly with the admin's Google sign-in (the guest page never reads it). */
 const GC = { data:null, q:'', edit:null, hist:{} };
 const GC_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I/L
 const GC_CUT = '09:00', GC_PLAN = { RO:'Room Only', BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' };
-const gcToday = () => new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' });
-const gcNow = () => new Date().toLocaleTimeString('en-GB', { timeZone:'Asia/Colombo', hour:'2-digit', minute:'2-digit', hour12:false });
 const GC_MEALS = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] };
 const gcCatMeal = k => k.meal !== undefined ? k.meal : (k.bfOnly !== undefined ? (k.bfOnly ? 'B' : '') : (k.bbIncluded ? 'B' : ''));
-function gcFixedHtml(basis, sel){                                   // categories included in this plan that can be flipped to "Fixed — no selection"
-  const cats = ((typeof state !== 'undefined' && state.categories) || []).filter(k => GC_MEALS[basis].includes(gcCatMeal(k)));
-  return cats.length ? cats.map(k => `<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-weight:500;"><input type="checkbox" class="gfFix" value="${esc(k.id)}" ${(sel || []).includes(k.id) ? 'checked' : ''} style="width:auto;"> ${esc(k.name)}</label>`).join('') : `<span class="hint">${basis === 'RO' ? 'Room Only has no included meals — the whole menu is orderable.' : 'No categories are set to Breakfast, Lunch or Dinner in Admin → Categories ("Served at"), so there is nothing to mark as a set meal.'}</span>`;
-}
+const gcToday = () => new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' });
+const gcNow = () => new Date().toLocaleTimeString('en-GB', { timeZone:'Asia/Colombo', hour:'2-digit', minute:'2-digit', hour12:false });
 const gcEl = id => document.getElementById(id);
 
+function gcFixedHtml(basis, sel){                                   // plan categories that can be flipped to "set meal"
+  const cats = ((typeof state !== 'undefined' && state.categories) || []).filter(k => (GC_MEALS[basis] || []).includes(gcCatMeal(k)));
+  return cats.length ? cats.map(k => `<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-weight:500;"><input type="checkbox" class="gfFix" value="${esc(k.id)}" ${(sel || []).includes(k.id) ? 'checked' : ''} style="width:auto;"> ${esc(k.name)}</label>`).join('')
+    : `<span class="hint">${basis === 'RO' ? 'Room Only has no included meals — the whole menu is orderable.' : 'No categories are set to Breakfast, Lunch or Dinner in Admin → Categories ("Served at"), so there is nothing to mark as a set meal.'}</span>`;
+}
 function gcCode(taken){
   for (;;){
     let c = ''; const b = new Uint8Array(12); crypto.getRandomValues(b);
@@ -21,12 +22,12 @@ function gcCode(taken){
   }
 }
 function gcTaken(list){ const s = new Set(); list.forEach(g => { s.add(g.code); (g.history || []).forEach(h => { if (h.old) s.add(h.old); if (h.new) s.add(h.new); }); }); return s; }
-const gcOld = list => list.filter(g => gcStatus(g) !== 'Active');
 const gcCreated = g => g.created || ((g.history || []).find(h => h.type === 'created') || {}).date || '';
 function gcStatus(g){
   if (g.revoked) return 'Revoked';
   const d = gcToday(); return (d > g.checkout || (d === g.checkout && gcNow() >= GC_CUT)) ? 'Expired' : 'Active';
 }
+const gcOld = list => list.filter(g => gcStatus(g) !== 'Active');
 function gcPhone(s){ let p = String(s || '').replace(/[\s\-().]/g, ''); if (p.startsWith('00')) p = '+' + p.slice(2); return /^\+\d{8,15}$/.test(p) ? p : ''; }
 
 async function gcLoad(){
@@ -134,7 +135,7 @@ function gcWireForm(){
       if (e.id){ const g = list.find(x => x.id === e.id); if (!g) { toast('That guest no longer exists.'); return false; } Object.assign(g, d); gcLog(g, 'edited'); }
       else { const g = Object.assign({ id:uid(), code:gcCode(gcTaken(list)), created:new Date().toISOString(), revoked:false, history:[] }, d); gcLog(g, 'created'); list.push(g); made = g.code; }
     }, e.id ? 'Guest updated' : 'Saved');
-    if (ok && made) alert('Guest code: ' + made + '\n\nUse "Copy message" or "WhatsApp" on the guest card to send it.'); else if (!ok) gcEl('gfSave') && (gcEl('gfSave').disabled = false);
+    if (ok && made) alert('Guest code: ' + made + '\n\nUse "Copy message" or "WhatsApp" on the guest card to send it.'); else if (!ok && gcEl('gfSave')) gcEl('gfSave').disabled = false;
   };
 }
 
