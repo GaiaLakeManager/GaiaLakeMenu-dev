@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.7",
-WHATS_NEW_LATEST: "Swiping down on your phone no longer refreshes the page, and your order is kept if the page reloads."
+  APP_VERSION: "3.0.8",
+  WHATS_NEW_LATEST: "Guests who have not checked in yet now see a welcome message, notices are easier to see in dark mode, and the guest list is backed up automatically."
 };

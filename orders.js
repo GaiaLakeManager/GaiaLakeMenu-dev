@@ -257,10 +257,7 @@ $('orderModal').addEventListener('change', e => {
   let v = t.value; if (t.min && v < t.min) v = t.min; if (t.max && v > t.max) v = t.max;
   if (v === t.value) return;
   t.value = v;
-  let b = document.getElementById('dateToast');
-  if (!b){ b = document.createElement('div'); b.id = 'dateToast'; b.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);max-width:90%;background:#1c2b22;color:#fff;padding:10px 14px;border-radius:10px;font-size:.85rem;z-index:100000;text-align:center'; document.body.appendChild(b); }
-  b.textContent = 'That date isn\u2019t available — set to the nearest available date (' + fmtDate(v) + ').'; b.style.display = 'block';
-  clearTimeout(dateToastT); dateToastT = setTimeout(() => { b.style.display = 'none'; }, 3500);
+  olToast('That date isn\u2019t available — set to the nearest available date (' + fmtDate(v) + ').');
 }, true);
 
 /* Photo thumbnail at the bottom-right of each order line; tap it to enlarge (v3.0.6). */
@@ -312,10 +309,17 @@ function restoreCart(){
     });
     const f = s.f || {}; Object.assign(OS.f, { date:(f.date && f.date >= mn && (!mx || f.date <= mx)) ? f.date : '', meal:f.meal || '', time:f.time || '', note:f.note || '' });
     if (n){
-      const b = document.createElement('div'); b.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);max-width:90%;background:#1c2b22;color:#fff;padding:10px 14px;border-radius:10px;font-size:.85rem;z-index:100000;text-align:center';
-      b.textContent = 'Your previous selections were restored.'; document.body.appendChild(b); setTimeout(() => b.remove(), 3500);
+      olToast('Your previous selections were restored.');
     }
   }catch(e){}
   OS.restored = true;
 }
 ['change', 'input'].forEach(ev => $('orderBody').addEventListener(ev, () => { try{ if ($('fName')) grab(); }catch(e){} saveCart(); }));   // keep dates, meals and note saved as they are edited
+
+/* Notice that stands out in both light and dark mode (v3.0.8). */
+let olToastT;
+function olToast(msg){
+  let b = document.getElementById('olToast');
+  if (!b){ b = document.createElement('div'); b.id = 'olToast'; b.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);width:max-content;max-width:90%;background:#ffd54f;color:#1a1a1a;border:2px solid #f9a825;box-shadow:0 6px 24px rgba(0,0,0,.55);padding:12px 16px;border-radius:12px;font:700 .95rem Manrope,sans-serif;z-index:100000;text-align:center'; document.body.appendChild(b); }
+  b.textContent = msg; b.style.display = 'block'; clearTimeout(olToastT); olToastT = setTimeout(() => { b.style.display = 'none'; }, 4500);
+}

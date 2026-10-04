@@ -134,7 +134,7 @@ function render(data){
   const offBanner = document.getElementById('orderOffBanner');
   statusRow.innerHTML = '';
   if (!orderingOff){
-    const status = computeOpenStatus(settings);
+    const status = glPreCheckin() ? null : computeOpenStatus(settings);        // before check-in: no Open/Closed badge
     if (status){
       const b = document.createElement('span');
       b.className = 'badge ' + (status.open ? 'open' : 'closed');
@@ -163,7 +163,7 @@ function render(data){
     offBanner.classList.add('hidden');
     offBanner.innerHTML = '';
     const open12 = to12h(settings.kitchenOpen), close12 = to12h(settings.kitchenClose);
-    hoursLine.textContent = open12 && close12 ? `Open to Order ${open12} to ${close12}` : '';
+    hoursLine.textContent = glPreCheckin() ? 'Welcome! Please pre-order your meals below' : (open12 && close12 ? `Open to Order ${open12} to ${close12}` : '');
   }
 
 

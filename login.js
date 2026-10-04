@@ -17,6 +17,7 @@ const GL_KEY = 'gl-guest-session';
   .gl-box button:disabled{opacity:.6;cursor:default}
   .gl-err{margin-top:14px;padding:10px 12px;border-radius:10px;background:#fbe7e4;color:#c0392b;font-size:.86rem;font-weight:600}
   .gl-foot{margin-top:16px;text-align:center;font-size:.78rem;color:var(--ink-soft,#5b6b60)}
+  .gl-foot a{color:var(--ink,#1c2b22);font-weight:800;text-decoration:underline}
   .gl-bar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:center;margin:10px 0;padding:8px 12px;border-radius:12px;background:var(--paper,#fff);border:1px solid var(--line,#e7e0d2);font-size:.85rem}
   .gl-bar button{font:700 .78rem 'Manrope',sans-serif;background:none;border:1px solid var(--line,#e7e0d2);border-radius:8px;padding:4px 10px;color:var(--ink-soft,#5b6b60);cursor:pointer}`;
   document.head.appendChild(st);
@@ -101,3 +102,5 @@ function glCatView(cat){                           // how one menu category look
   }
   return r;
 }
+
+const glPreCheckin = () => !!GUEST && GUEST.checkin > new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' });   // logged in, but check-in date is still ahead

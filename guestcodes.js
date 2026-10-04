@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.6). Loaded by admin.html after config.js.
+/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.8). Loaded by admin.html after config.js.
    Reads/writes the private guestlogin.json directly with the admin's Google sign-in (the guest page never reads it). */
 const GC = { data:null, q:'', edit:null, hist:{} };
 const GC_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I/L
@@ -37,11 +37,31 @@ async function gcLoad(){
   try{ GC.data = await downloadJsonFile(CONFIG.GUESTLOGIN_FILE_ID); if (!Array.isArray(GC.data.guests)) GC.data.guests = []; GC.data.guests.forEach(g => { if (!g.id) g.id = uid(); }); gcRender(); }
   catch(e){ box.innerHTML = `<div class="panel-box"><p class="hint">Couldn't open the guest file: ${esc(e.message)}. Check that it is shared as Editor with your account.</p></div>`; }
 }
+/* Backups of guestlogin.json, kept beside it in the private GuestLog folder: one per day (newest 7) and one per week (newest 4). */
+const gcBk = { done:{} };
+const gcMonday = () => { const d = new Date(gcToday() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+async function gcBackup(snapshot){
+  const tiers = [{ id:'daily', prefix:'guestlogin_daily_', key:gcToday(), keep:7 }, { id:'weekly', prefix:'guestlogin_weekly_', key:gcMonday(), keep:4 }];
+  const due = tiers.filter(t => gcBk.done[t.id] !== t.key); if (!due.length) return;
+  const meta = await (await driveFetch(`https://www.googleapis.com/drive/v3/files/${CONFIG.GUESTLOGIN_FILE_ID}?fields=parents`)).json();
+  const parent = (meta.parents || [])[0]; if (!parent) throw new Error('guest file folder not found');
+  const q = encodeURIComponent(`'${parent}' in parents and trashed=false and name contains 'guestlogin_'`);
+  const files = ((await (await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&fields=files(id,name)`)).json()).files || []);
+  for (const t of due){
+    const name = `${t.prefix}${t.key}.json`;
+    if (!files.some(f => f.name === name)){ const id = await createJsonFile(parent, name, snapshot); files.push({ id:id, name:name }); }
+    gcBk.done[t.id] = t.key;
+    const mine = files.filter(f => f.name.startsWith(t.prefix)).sort((x, y) => y.name.localeCompare(x.name));
+    for (const old of mine.slice(t.keep)){ try{ await trashFile(old.id); }catch(e){} }
+  }
+}
 async function gcSave(mutate, okMsg){                         // re-reads the file first so two admins don't overwrite each other
   try{
     const fresh = await downloadJsonFile(CONFIG.GUESTLOGIN_FILE_ID); if (!Array.isArray(fresh.guests)) fresh.guests = [];
     fresh.guests.forEach(g => { if (!g.id) g.id = uid(); });
+    const r0 = JSON.stringify(fresh);
     const r = mutate(fresh.guests); if (r === false) return false;
+    try{ await gcBackup(JSON.parse(r0)); }catch(e){ toast('Backup of guest file failed: ' + e.message); }   // state before this change
     await updateJsonFile(CONFIG.GUESTLOGIN_FILE_ID, fresh); GC.data = fresh; GC.edit = null; gcRender(); if (okMsg) toast(okMsg); return true;
   }catch(e){ toast('Not saved: ' + e.message); return false; }
 }

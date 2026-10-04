@@ -1,5 +1,11 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.8 — 4 Oct 2026
+- **Welcome before check-in.** A logged-in guest whose check-in date is still ahead no longer sees "Open to Order …" or the Open/Closed badge; they see "Welcome! Please pre-order your meals below". After check-in the opening-hours line shows as before.
+- **Notices are easier to see.** The "date set to the nearest available date" and "selections restored" messages are now bright yellow with dark text, readable in dark and light mode.
+- **Login screen.** The reception phone number in "Need help?" is now bold and readable in dark mode.
+- **Guest list backups.** `guestlogin.json` is backed up automatically before the first change each day and each week, into the same private GuestLog folder: the newest 7 daily and 4 weekly copies are kept, older ones go to Drive's Trash (`guestcodes.js`).
+
 ## v3.0.7 — 4 Oct 2026
 - **No more accidental refresh.** Swiping down at the top of the page on a phone (Chrome's pull-to-refresh) no longer reloads the menu or the order screen.
 - **Your order is kept if the page reloads.** Items, quantities, options, dates, meals and the note are saved on the phone as you go and restored automatically (a short "selections restored" message appears). Items no longer on the menu, and dates that are no longer allowed, are dropped. The saved order is cleared when the order is sent or cancelled, and after 12 hours. Each guest's order is stored separately (`orders.js`).
