@@ -1,5 +1,8 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.10 — 4 Oct 2026
+- **Link preview picture.** The menu page now carries preview tags (title, description and the picture `welcome.jpg`), so when the menu link is shared on WhatsApp it shows the picture and title. The picture address is a full URL in `index.html` (the `og:image` line): the DEV file points to the dev repo, so change that one line to the live repo's address when launching (`index.html`).
+
 ## v3.0.9 — 4 Oct 2026
 - **Stronger login protection.** Any 3 wrong logins from the same phone or browser (whatever codes were tried) pause login for 10 minutes; 3 more wrong ones stop login for that browser for several hours with a "contact management" message. A code that gets 3 + 3 wrong tries is locked until a new code is issued. If many wrong logins arrive across all guests, login pauses for everyone for 10 minutes (`Code.gs`, `login.js`).
 - **Past meal times.** Once today's Breakfast, Lunch or Dinner time has passed, that meal can no longer be ordered for today; the date picker starts from tomorrow and the server enforces it too (`orders.js`, `Code.gs`).

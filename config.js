@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.9",
-  WHATS_NEW_LATEST: "Stronger protection against code guessing, past meal times can no longer be ordered for today, clearer date messages, and guest list backups in their own folder."
+  APP_VERSION: "3.0.10",
+  WHATS_NEW_LATEST: "The menu link now shows a welcome picture and title when it is shared on WhatsApp."
 };
