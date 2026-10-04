@@ -179,7 +179,7 @@ function render(data){
   }
 
   categories.forEach(cat => {
-    const gv = glCatView(cat); if (gv.hide) return;           // v3.0.2: login mode — plan tags, set menus, check-out day
+    const gv = glCatView(cat); if (gv.hide) return;           // login mode: plan tags, set menus, check-out day
     const items = dishes.filter(d => d.categoryId === cat.id).sort((a,b)=>((a.order||0)-(b.order||0)) || ((a.code||0)-(b.code||0)));
     const tab = document.createElement('button');
     tab.className = 'tab';

@@ -1,5 +1,16 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.4 — 3 Oct 2026
+- **Delete guests.** Every guest card in Admin → Guest Codes has a Delete button (asks for confirmation; extra warning if the guest is still active). A new "Delete all expired / revoked" button clears old records in one go, so the guest file stays small and loads fast. Active guests are never touched by the bulk delete (`guestcodes.js`).
+
+## v3.0.3 — 3 Oct 2026
+- **Review order opens at once.** The quiet login re-check now runs in the background (the server still re-checks every order when it is sent).
+- **Guest Note.** The guest's note is labelled "Guest Note" in the Telegram and email order messages so staff don't confuse it with other notes.
+- **Check-out day.** Guests can pre-order breakfast, lunch and dinner for their check-out day, and the date is not restricted. Only on the check-out day itself are those categories hidden (too late to prepare).
+- **Before check-in.** The "Same-day orders are closed for today" notice no longer shows to guests whose check-in date is still ahead; they just see the check-in date rule. After check-in it shows as before.
+- **Room Only (RO)** added as a booking basis: the full menu is shown and orderable, nothing is included or hidden.
+- **Guest Codes list** now shows the newest guest first. The "Set meals for this guest" section now lists the plan's meal categories correctly (`guestcodes.js`, `orders.js`, `login.js`, `Code.gs`).
+
 ## v3.0.2 — 3 Oct 2026
 - **Meal plan & ordering (login mode).** Categories included in the guest's plan (BB = breakfast, HB = breakfast + dinner, FB = breakfast, lunch + dinner, matched by each category's "Served at" setting) show an "Included in your plan" tag and are free on the order. Any-time categories are never plan-included. The Bed & Breakfast tick box is hidden.
 - **Set menus.** In Admin → Guest Codes → Edit, tick "Fixed — no selection" for any plan category: that category is hidden from the guest and replaced by the message for their plan.

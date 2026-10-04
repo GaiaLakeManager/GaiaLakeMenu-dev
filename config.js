@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.2",
-  WHATS_NEW_LATEST: "Logged-in guests now see their meal plan on the menu, can order only from check-in to check-out, and their name, phone and room are filled in automatically."
+  APP_VERSION: "3.0.4",
+WHATS_NEW_LATEST: "Admin can now delete guest records, one at a time or all expired and revoked ones at once."
 };

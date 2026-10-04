@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest login (v3.0.2). Loaded by index.html after config.js.
+/* Gaia Lake Menu — guest login (v3.0.3). Loaded by index.html after config.js.
    Verification happens in Apps Script against a private file; this page only sends name + phone + code. */
 let GUEST = null;                                   // verified guest details (name, phone, room, basis, checkin, checkout, fixed …)
 const GL_KEY = 'gl-guest-session';
@@ -38,7 +38,7 @@ async function glCall(action, d){                   // -> { ok, guest | error, r
 function glBar(){                                   // small "signed in" strip under the header
   const old = document.getElementById('glBar'); if (old) old.remove();
   if (!GUEST) return;
-  const plan = { BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' }[GUEST.basis] || '';
+  const plan = { RO:'Room Only', BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' }[GUEST.basis] || '';
   const where = GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || '');
   const d = document.createElement('div'); d.className = 'gl-bar'; d.id = 'glBar';
   d.innerHTML = `<span>👤 <strong>${esc(GUEST.name)}</strong>${where ? ' · ' + esc(where) : ''}${plan ? ' · ' + plan : ''}</span><button type="button" id="glOut">Log out</button>`;
@@ -88,13 +88,13 @@ async function glGate(data, go){                    // called by index.html with
   glForm(data, go);
 }
 
-/* ---- meal plan helpers (v3.0.2) ---- */
+/* ---- meal plan helpers ---- */
 const glCatMeal = k => k.meal !== undefined ? k.meal : (k.bfOnly !== undefined ? (k.bfOnly ? 'B' : '') : (k.bbIncluded ? 'B' : ''));   // category fixed to B / L / D, or '' = any time
 function glCatView(cat){                           // how one menu category looks for the logged-in guest
   const r = { hide:false, msg:'', inc:false };
   if (!GUEST) return r;
-  const m = glCatMeal(cat), plan = { BB:['B'], HB:['B','D'], FB:['B','L','D'] }[GUEST.basis] || [];
-  if (m && new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' }) === GUEST.checkout){ r.hide = true; return r; }   // check-out day: B/L/D too late to prepare
+  const m = glCatMeal(cat), plan = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] }[GUEST.basis] || [];
+  if (m && new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' }) === GUEST.checkout){ r.hide = true; return r; }   // on the check-out day itself B/L/D are too late to prepare (earlier days can still pre-order them)
   if (m && plan.includes(m)){
     if ((GUEST.fixed || []).includes(cat.id)) r.msg = { BB:'Your breakfast is a set menu — no selection needed.', HB:'Your breakfast and dinner are a set menu — no selection needed.', FB:'Your breakfast, lunch and dinner are a set menu — no selection needed.' }[GUEST.basis] || 'This is a set menu — no selection needed.';
     else r.inc = true;

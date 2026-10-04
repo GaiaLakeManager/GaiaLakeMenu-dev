@@ -26,7 +26,7 @@ function doPost(e){
     const menu = JSON.parse(DriveApp.getFileById(P.getProperty('MENU_FILE_ID')).getBlob().getDataAsString());
     const S = menu.settings || {};
     if (S.acceptingOrders === false) return reject('Ordering is paused right now — please call us.');
-    let G = null;                                                          // v3.0.2: login mode — the guest's own booking record is the source of truth
+    let G = null;                                                          // login mode — the guest's own booking record is the source of truth
     if (S.requireGuestLogin === true){
       const f = glFind(P, String(o.gc || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), glName(o.name), glPhone(o.phone));
       if (!f || !f.match) return reject('Your login is no longer valid. Please log in again.');
@@ -62,10 +62,10 @@ function doPost(e){
         if (date < minDate) return reject('Same-day orders are closed for today. Please choose tomorrow or a later date.');
         if (meal === 'T' && (time < openT || time > lastT)) return reject('A specific time must be between ' + openT + ' and ' + lastT + '. For any other time, please add a note.');
         if (meal === 'T' && date === today && time < nowSL) return reject('That time has already passed today. Please choose a later time or another date.');
-        if (G){                                                            // login mode: stay window, check-out day and set-menu rules
+        if (G){                                                            // login mode: stay window and set-menu rules
           if (G.checkin && date < G.checkin) return reject('Please choose a date from your check-in date (' + G.checkin + ').');
           if (date > G.checkout) return reject('Orders can only be placed up to your check-out date (' + G.checkout + ').');
-          if (catMeal[d.categoryId] && date === G.checkout) return reject('Breakfast, Lunch and Dinner items cannot be ordered for the check-out day.');
+          if (catMeal[d.categoryId] && today === G.checkout) return reject('Breakfast, Lunch and Dinner can no longer be ordered today (check-out day).');
           if ((G.fixed || []).indexOf(d.categoryId) >= 0) return reject('That category is a set menu for your stay — no selection needed.');
         }
       }
@@ -97,7 +97,7 @@ function notify(r, P){
     (r.receivedOutsideHours ? '⚠ Received outside kitchen hours\n' : '') +
     'NEW ORDER ' + r.id + (r.amend ? ' (AMENDS ' + r.amend + ')' : '') + '\n' + r.name + ' · ' + r.room + ' · ' + r.phone + '\n' +
     r.items.map(i => i.qty + 'x #' + ('00' + i.code).slice(-3) + ' ' + i.name + (i.sub ? ' – ' + i.sub : '') + (i.bbWaived ? ' (BB — included)' : '') + (i.date ? ' [' + i.date + ' ' + (MN[i.meal] || i.time) + ']' : '')).join('\n') +
-    '\nTotal USD ' + Number(r.total).toFixed(2) + (r.note ? '\nNote: ' + r.note : '') + (r.priceAdjusted ? '\n⚠ Price differed from guest screen — menu price used' : '');
+    '\nTotal USD ' + Number(r.total).toFixed(2) + (r.note ? '\nGuest Note: ' + r.note : '') + (r.priceAdjusted ? '\n⚠ Price differed from guest screen — menu price used' : '');
   try{ UrlFetchApp.fetch('https://api.telegram.org/bot' + P.getProperty('TELEGRAM_TOKEN') + '/sendMessage',
         { method:'post', payload:{ chat_id:P.getProperty('TELEGRAM_CHAT'), text:text }, muteHttpExceptions:true }); }catch(e){}
   try{ MailApp.sendEmail(P.getProperty('ORDER_EMAIL'), 'Food order ' + r.id + ' – ' + r.room, text); }catch(e){}
@@ -105,8 +105,8 @@ function notify(r, P){
 
 /* ===================== Guest login (v3.0) =====================
    Records live in a PRIVATE guestlogin.json (id in Script Property GUESTLOGIN_FILE_ID); the browser never reads it.
-   Record: { id, code, name, phone, checkin, checkout, basis:'BB|HB|FB', group:bool, room, groupLabel, fixed:[category ids], revoked:bool } */
-const GL_PLAN = { BB:['B'], HB:['B','D'], FB:['B','L','D'] };   // meals included in each booking basis
+   Record: { id, code, name, phone, checkin, checkout, basis:'RO|BB|HB|FB', group:bool, room, groupLabel, fixed:[category ids], revoked:bool } */
+const GL_PLAN = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] };   // meals included in each booking basis
 const GL_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', GL_CUTOFF = '09:00', GL_GLOBAL_MAX = 30;
 const GL_BAD = 'Name, phone number or code doesn\u2019t match our records.', GL_CONTACT = 'Too many failed attempts. Please contact Gaia Lake management for a new code.';
 function glName(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }

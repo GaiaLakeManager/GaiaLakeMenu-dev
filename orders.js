@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest ordering (v3.0.2). Loaded by index.html after the menu script. */
+/* Gaia Lake Menu — guest ordering (v2.0.4). Loaded by index.html after the menu script. */
 let ORDERING = false;
 const menuData = () => window.MENU || {};   // index.html stores the loaded menu in window.MENU
 const OS = { cart:new Map(), amend:null, lastId:null, id:null, f:{}, text:'' };
@@ -9,14 +9,13 @@ function tomorrow(){ const d = new Date(today() + 'T00:00:00Z'); d.setUTCDate(d.
 function hours(){ const s = (menuData().settings || {}); return { open:s.kitchenOpen || '06:00', close:s.kitchenClose || '22:00', cutoff:s.sameDayCutoff || '19:00', last:s.lastDining || '21:00' }; }
 const pastCutoff = () => nowHM() >= hours().cutoff;
 const minDate = () => { const b = pastCutoff() ? tomorrow() : today(); return GUEST && GUEST.checkin > b ? GUEST.checkin : b; };   // login mode: not before check-in          // earliest dining date a guest may still pick
-const maxDate = c => !GUEST ? '' : (c && fixedMeal(c) ? addDays(GUEST.checkout, -1) : GUEST.checkout);   // login mode: up to check-out (meals: the day before)
+const maxDate = () => GUEST ? GUEST.checkout : '';   // login mode: up to check-out
 function kitchenOpenNow(){ const h = hours(), n = nowHM(); return h.open <= h.close ? (n >= h.open && n < h.close) : (n >= h.open || n < h.close); }
 const dishBy = c => (menuData().dishes || []).find(d => Number(d.code) === Number(c));
 const catOf = c => (menuData().categories || []).find(x => x.id === dishBy(c)?.categoryId);
-const gPlan = () => GUEST ? ({ BB:['B'], HB:['B','D'], FB:['B','L','D'] }[GUEST.basis] || []) : [];   // meals included in the guest's booking basis
+const gPlan = () => GUEST ? ({ RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] }[GUEST.basis] || []) : [];   // meals included in the guest's booking basis
 const planCat = k => !!k && !!GUEST && gPlan().includes(glCatMeal(k));          // category included in the plan (login mode)
 const isBB = c => GUEST ? planCat(catOf(c)) : !!catOf(c)?.bbIncluded;
-const addDays = (v, n) => { const d = new Date(v + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const cartHasBB = () => lines().some(l => isBB(l.c));
 const code3 = c => '#' + String(c).padStart(3, '0');
 const usd = n => 'USD ' + Number(n).toFixed(2);   // all order prices are in USD; LKR conversion happens at final billing
@@ -42,9 +41,9 @@ document.addEventListener('click', e => {
   const k = b.dataset.c + '|' + b.dataset.s, l = OS.cart.get(k) || { c:b.dataset.c, s:b.dataset.s, q:0, d:'', m:'', t:'' };
   l.q = Math.min(50, l.q + 1); OS.cart.set(k, l); bar();
 });
-$('openCart').onclick = async () => {
-  if (GUEST){ const s = glSaved(), r = s ? await glCall('check', s) : { ok:false, error:'Please log in again.' };   // quiet re-check before each order
-    if (!r.ok && !r.network){ glClear(); alert(r.error || 'Please log in again.'); location.reload(); return; } if (r.ok) GUEST = r.guest; }
+$('openCart').onclick = () => {
+  if (GUEST){ const s = glSaved(); if (s) glCall('check', s).then(r => {                                                      // quiet re-check runs in the background
+    if (!r.ok && !r.network){ glClear(); alert(r.error || 'Please log in again.'); location.reload(); } else if (r.ok) GUEST = r.guest; }); }
   showForm(); $('orderModal').classList.add('open'); document.body.classList.add('o-lock'); $('orderModal').scrollTop = 0; };
 const closeO = () => { $('orderModal').classList.remove('open'); document.body.classList.remove('o-lock'); };
 
@@ -81,14 +80,14 @@ function grab(){
 }
 function notices(){
   const h = hours(); let n = '';
-  if (askWhen() && pastCutoff()) n += `<div class="o-note">Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.</div>`;
+  if (askWhen() && pastCutoff() && !(GUEST && GUEST.checkin > today())) n += `<div class="o-note">Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.</div>`;
   if (!kitchenOpenNow()) n += `<div class="o-note">The kitchen is closed right now. Your order will still be sent and seen when we open at ${to12h(h.open)}.</div>`;
   return n;
 }
 function itemWhen(l){                                                // per-item date (and meal) — shown only when the admin per-item switch is on
   if (!askWhen() || !perItem()) return '';
   const w = when(l), h = hours(), grp = isGroupRoom(OS.f.room);
-  const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDate()}" max="${maxDate(l.c)}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
+  const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDate()}" max="${maxDate()}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
   if (fixedMeal(l.c)) return `<div class="ol-when">${dIn}</div>`;
   const sel = `<div class="ol-when-lbl">${l.m === 'T' ? 'Serve at' : 'Serve for'}</div><select class="om">${l.m ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${l.m === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${l.m === 'T' ? ' selected' : ''}>Specific time</option></select>`;
   const tIn = l.m === 'T' ? `<div class="dt-row"><input type="time" class="ot" min="${h.open}" max="${h.last}" value="${l.t || ''}"><small class="fmt">${fmtOf('time', l.t)}</small></div><div class="hint">Between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
@@ -139,11 +138,10 @@ function check(){
     const w = when(l);
     if (!w.d) return 'Please choose a dining date.';
     if (w.d < today()) return 'The dining date cannot be in the past.';
-    if (w.d < minDate()) return `Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.`;
+    if (w.d < minDate()) return GUEST && GUEST.checkin > today() ? `Please choose a date from your check-in date (${fmtDate(GUEST.checkin)}).` : `Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.`;
     if (GUEST){
       if (w.d < GUEST.checkin) return `Please choose a date from your check-in date (${fmtDate(GUEST.checkin)}).`;
       if (w.d > GUEST.checkout) return `Orders can only be placed up to your check-out date (${fmtDate(GUEST.checkout)}).`;
-      if (fixedMeal(l.c) && w.d === GUEST.checkout) return 'Breakfast, Lunch and Dinner items cannot be ordered for the check-out day. Other items can.';
     }
     if (!w.m) return 'Please choose Breakfast, Lunch, Dinner or a specific time.';
     if (!w.t) return 'Please choose a dining time.';

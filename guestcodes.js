@@ -1,15 +1,15 @@
-/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.2). Loaded by admin.html after config.js.
+/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.4). Loaded by admin.html after config.js.
    Reads/writes the private guestlogin.json directly with the admin's Google sign-in (the guest page never reads it). */
 const GC = { data:null, q:'', edit:null, hist:{} };
 const GC_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I/L
-const GC_CUT = '09:00', GC_PLAN = { BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' };
+const GC_CUT = '09:00', GC_PLAN = { RO:'Room Only', BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' };
 const gcToday = () => new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' });
 const gcNow = () => new Date().toLocaleTimeString('en-GB', { timeZone:'Asia/Colombo', hour:'2-digit', minute:'2-digit', hour12:false });
-const GC_MEALS = { BB:['B'], HB:['B','D'], FB:['B','L','D'] };
+const GC_MEALS = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] };
 const gcCatMeal = k => k.meal !== undefined ? k.meal : (k.bfOnly !== undefined ? (k.bfOnly ? 'B' : '') : (k.bbIncluded ? 'B' : ''));
 function gcFixedHtml(basis, sel){                                   // categories included in this plan that can be flipped to "Fixed — no selection"
-  const cats = ((window.state && state.categories) || []).filter(k => GC_MEALS[basis].includes(gcCatMeal(k)));
-  return cats.length ? cats.map(k => `<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-weight:500;"><input type="checkbox" class="gfFix" value="${esc(k.id)}" ${(sel || []).includes(k.id) ? 'checked' : ''} style="width:auto;"> ${esc(k.name)}</label>`).join('') : '<span class="hint">No categories are included in this plan.</span>';
+  const cats = ((typeof state !== 'undefined' && state.categories) || []).filter(k => GC_MEALS[basis].includes(gcCatMeal(k)));
+  return cats.length ? cats.map(k => `<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-weight:500;"><input type="checkbox" class="gfFix" value="${esc(k.id)}" ${(sel || []).includes(k.id) ? 'checked' : ''} style="width:auto;"> ${esc(k.name)}</label>`).join('') : `<span class="hint">${basis === 'RO' ? 'Room Only has no included meals — the whole menu is orderable.' : 'No categories are set to Breakfast, Lunch or Dinner in Admin → Categories ("Served at"), so there is nothing to mark as a set meal.'}</span>`;
 }
 const gcEl = id => document.getElementById(id);
 
@@ -21,6 +21,8 @@ function gcCode(taken){
   }
 }
 function gcTaken(list){ const s = new Set(); list.forEach(g => { s.add(g.code); (g.history || []).forEach(h => { if (h.old) s.add(h.old); if (h.new) s.add(h.new); }); }); return s; }
+const gcOld = list => list.filter(g => gcStatus(g) !== 'Active');
+const gcCreated = g => g.created || ((g.history || []).find(h => h.type === 'created') || {}).date || '';
 function gcStatus(g){
   if (g.revoked) return 'Revoked';
   const d = gcToday(); return (d > g.checkout || (d === g.checkout && gcNow() >= GC_CUT)) ? 'Expired' : 'Active';
@@ -45,13 +47,13 @@ async function gcSave(mutate, okMsg){                         // re-reads the fi
 const gcLog = (g, type, extra) => { (g.history = g.history || []).push(Object.assign({ type:type, date:new Date().toISOString(), by:userEmail }, extra || {})); };
 
 function gcMessage(g){
-  return `Welcome to ${(window.state && state.profile && state.profile.name) || 'Gaia Lake'}! To view our menu and order meals, open ${CONFIG.GUEST_MENU_URL.replace(/index\.html$/, '')} and log in with your name, phone number and this code: ${g.code}\nYour code works until ${GC_CUT} AM on ${g.checkout}.`;
+  return `Welcome to ${(typeof state !== 'undefined' && state.profile && state.profile.name) || 'Gaia Lake'}! To view our menu and order meals, open ${CONFIG.GUEST_MENU_URL.replace(/index\.html$/, '')} and log in with your name, phone number and this code: ${g.code}\nYour code works until ${GC_CUT} AM on ${g.checkout}.`;
 }
 
 function gcRender(){
   const box = gcEl('gcBody'), all = GC.data.guests, q = GC.q.trim().toLowerCase();
   const list = all.filter(g => !q || [g.name, g.phone, g.code, g.room, g.groupLabel].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => (gcStatus(a) === 'Active' ? 0 : 1) - (gcStatus(b) === 'Active' ? 0 : 1) || String(b.checkout).localeCompare(a.checkout));
+    .sort((a, b) => gcCreated(b).localeCompare(gcCreated(a)));                       // newest added first
   const on = (state.settings || {}).requireGuestLogin === true;
   box.innerHTML = `<div class="panel-box"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
       <label class="switch"><input type="checkbox" id="gcReq" ${on ? 'checked' : ''}><span class="slider"></span></label>
@@ -59,11 +61,17 @@ function gcRender(){
     <div class="panel-box"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-primary" id="gcAdd">+ Add guest</button>
       <input id="gcSearch" placeholder="Search name, phone, code, room…" value="${esc(GC.q)}" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);">
+      ${gcOld(all).length ? `<button class="btn btn-sm btn-danger" id="gcClean">Delete all expired / revoked (${gcOld(all).length})</button>` : ''}
       <span class="hint">${list.length} of ${all.length}</span></div></div>
     ${GC.edit ? gcForm(GC.edit) : ''}
     ${list.map(gcCard).join('') || '<p class="hint">No guests yet.</p>'}`;
   gcEl('gcReq').onchange = async e => { state.settings.requireGuestLogin = e.target.checked; try{ await persist(false); toast(e.target.checked ? 'Guest login is now required' : 'Guest login is off — menu is open'); }catch(x){ toast('Not saved: ' + x.message); } };
   gcEl('gcAdd').onclick = () => { GC.edit = { id:'', group:false, basis:'BB', checkin:gcToday(), checkout:'' }; gcRender(); gcEl('gcForm').scrollIntoView({ behavior:'smooth' }); };
+  if (gcEl('gcClean')) gcEl('gcClean').onclick = async () => {
+    const n = gcOld(GC.data.guests).length;
+    if (!confirm('Permanently delete ' + n + ' expired or revoked guest record(s)? Active guests are not touched. This cannot be undone.')) return;
+    await gcSave(list => { for (let i = list.length - 1; i >= 0; i--) if (gcStatus(list[i]) !== 'Active') list.splice(i, 1); }, n + ' record(s) deleted');
+  };
   gcEl('gcSearch').oninput = e => { GC.q = e.target.value; const p = e.target.selectionStart; gcRender(); const s = gcEl('gcSearch'); s.focus(); s.setSelectionRange(p, p); };
   if (GC.edit) gcWireForm();
   box.querySelectorAll('[data-gc]').forEach(b => b.onclick = () => gcAct(b.dataset.gc, b.dataset.id));
@@ -84,7 +92,8 @@ function gcCard(g){
       <button class="btn btn-sm" data-gc="regen" data-id="${g.id}">New code</button>
       ${g.device ? `<button class="btn btn-sm" data-gc="unlock" data-id="${g.id}">Clear device lock</button>` : ''}
       <button class="btn btn-sm ${g.revoked ? '' : 'btn-danger'}" data-gc="revoke" data-id="${g.id}">${g.revoked ? 'Reactivate' : 'Revoke'}</button>
-      <button class="btn btn-sm" data-gc="hist" data-id="${g.id}">History (${h.length})</button></div>
+      <button class="btn btn-sm" data-gc="hist" data-id="${g.id}">History (${h.length})</button>
+      <button class="btn btn-sm btn-danger" data-gc="del" data-id="${g.id}">Delete</button></div>
     ${GC.hist[g.id] ? `<div class="hint" style="margin-top:10px;">${h.map(x => `${esc(new Date(x.date).toLocaleString('en-GB', { timeZone:'Asia/Colombo' }))} — ${esc(x.type)}${x.old ? ': ' + esc(x.old) + ' → ' + esc(x.new) : ''} · ${esc(x.by || '')}`).join('<br>') || 'No history yet.'}</div>` : ''}</div>`;
 }
 
@@ -99,7 +108,7 @@ function gcForm(e){
       <div class="field"><label>Booking type</label><select id="gfType"><option value="0" ${e.group ? '' : 'selected'}>Individual</option><option value="1" ${e.group ? 'selected' : ''}>Group</option></select></div></div>
     <div class="field" id="gfRoomF" style="${e.group ? 'display:none' : ''}"><label>Room / villa</label><input id="gfRoom" list="gfRooms" value="${esc(e.room || '')}"><datalist id="gfRooms">${rooms.map(r => `<option value="${esc(r)}">`).join('')}</datalist></div>
     <div class="field" id="gfGroupF" style="${e.group ? '' : 'display:none'}"><label>Group name</label><input id="gfGroup" placeholder="e.g. Hodgson Group" value="${esc(e.groupLabel || '')}"></div>
-    <div class="field"><label>Fixed — no selection <span class="hint">(tick only if the kitchen is serving a set meal for this guest; the category is then hidden from ordering)</span></label><div id="gfFixed">${gcFixedHtml(e.basis || 'BB', e.fixed)}</div></div>
+    <div class="field"><label>Set meals for this guest <span class="hint">(optional — tick a meal only when the kitchen serves this guest a fixed set meal instead of letting them choose; that category is then hidden from ordering and the guest sees "set menu — no selection needed")</span></label><div id="gfFixed">${gcFixedHtml(e.basis || 'BB', e.fixed)}</div></div>
     <p class="hint" id="gfErr" style="color:var(--danger);display:none;"></p>
     <div class="btn-row" style="margin-top:12px;"><button class="btn btn-primary" id="gfSave">${isNew ? 'Save & generate code' : 'Save changes'}</button><button class="btn" id="gfCancel">Cancel</button></div></div>`;
 }
@@ -123,7 +132,7 @@ function gcWireForm(){
     let made = '';
     const ok = await gcSave(list => {
       if (e.id){ const g = list.find(x => x.id === e.id); if (!g) { toast('That guest no longer exists.'); return false; } Object.assign(g, d); gcLog(g, 'edited'); }
-      else { const g = Object.assign({ id:uid(), code:gcCode(gcTaken(list)), revoked:false, history:[] }, d); gcLog(g, 'created'); list.push(g); made = g.code; }
+      else { const g = Object.assign({ id:uid(), code:gcCode(gcTaken(list)), created:new Date().toISOString(), revoked:false, history:[] }, d); gcLog(g, 'created'); list.push(g); made = g.code; }
     }, e.id ? 'Guest updated' : 'Saved');
     if (ok && made) alert('Guest code: ' + made + '\n\nUse "Copy message" or "WhatsApp" on the guest card to send it.'); else if (!ok) gcEl('gfSave') && (gcEl('gfSave').disabled = false);
   };
@@ -143,6 +152,11 @@ async function gcAct(act, id){
   else if (act === 'revoke'){
     if (!g.revoked && !confirm('Revoke the code for ' + g.name + '? Login stops working immediately.')) return;
     await gcSave(list => { const x = list.find(r => r.id === id); if (!x) return false; x.revoked = !x.revoked; gcLog(x, x.revoked ? 'revoked' : 'reactivated'); }, g.revoked ? 'Reactivated' : 'Revoked');
+  }
+  else if (act === 'del'){
+    const live = gcStatus(g) === 'Active';
+    if (!confirm('Permanently delete ' + g.name + ' (' + g.code + ')?' + (live ? '\n\nThis guest is still ACTIVE — they will no longer be able to log in or order.' : '') + '\n\nThis cannot be undone.')) return;
+    await gcSave(list => { const i = list.findIndex(r => r.id === id); if (i < 0) return false; list.splice(i, 1); }, 'Guest deleted');
   }
   else if (act === 'unlock'){ await gcSave(list => { const x = list.find(r => r.id === id); if (!x) return false; delete x.device; gcLog(x, 'device lock cleared'); }, 'Device lock cleared'); }
 }
