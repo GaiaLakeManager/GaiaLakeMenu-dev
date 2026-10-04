@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.6",
-WHATS_NEW_LATEST: "Each item on your order now shows a small photo you can tap to enlarge, Room Only bookings are handled correctly, and the date pickers work the same on phone and PC."
+  APP_VERSION: "3.0.7",
+WHATS_NEW_LATEST: "Swiping down on your phone no longer refreshes the page, and your order is kept if the page reloads."
 };
