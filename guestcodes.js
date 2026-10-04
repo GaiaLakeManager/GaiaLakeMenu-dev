@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.8). Loaded by admin.html after config.js.
+/* Gaia Lake Menu — Admin "Guest Codes" tab (v3.0.9). Loaded by admin.html after config.js.
    Reads/writes the private guestlogin.json directly with the admin's Google sign-in (the guest page never reads it). */
 const GC = { data:null, q:'', edit:null, hist:{} };
 const GC_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I/L
@@ -37,23 +37,32 @@ async function gcLoad(){
   try{ GC.data = await downloadJsonFile(CONFIG.GUESTLOGIN_FILE_ID); if (!Array.isArray(GC.data.guests)) GC.data.guests = []; GC.data.guests.forEach(g => { if (!g.id) g.id = uid(); }); gcRender(); }
   catch(e){ box.innerHTML = `<div class="panel-box"><p class="hint">Couldn't open the guest file: ${esc(e.message)}. Check that it is shared as Editor with your account.</p></div>`; }
 }
-/* Backups of guestlogin.json, kept beside it in the private GuestLog folder: one per day (newest 7) and one per week (newest 4). */
+/* Backups of guestlogin.json go into a "Backup" sub-folder of the private GuestLog folder (the live file stays alone in GuestLog):
+   guestlogin-backup-daily-YYYY-MM-DD.json (newest 7 kept) and guestlogin-backup-weekly-W##.json (ISO week number, newest 4 kept). */
 const gcBk = { done:{} };
-const gcMonday = () => { const d = new Date(gcToday() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); };
+function gcWeek(){ const d = new Date(gcToday() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 4 - ((d.getUTCDay() + 6) % 7 + 1)); const y = Date.UTC(d.getUTCFullYear(), 0, 1); return String(Math.ceil(((d - y) / 86400000 + 1) / 7)).padStart(2, '0'); }
+async function gcBackupFolder(parent){
+  const q = encodeURIComponent(`'${parent}' in parents and name='Backup' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const hit = ((await (await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`)).json()).files || [])[0]; if (hit) return hit.id;
+  const r = await driveFetch('https://www.googleapis.com/drive/v3/files?fields=id', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ name:'Backup', mimeType:'application/vnd.google-apps.folder', parents:[parent] }) });
+  return (await r.json()).id;
+}
 async function gcBackup(snapshot){
-  const tiers = [{ id:'daily', prefix:'guestlogin_daily_', key:gcToday(), keep:7 }, { id:'weekly', prefix:'guestlogin_weekly_', key:gcMonday(), keep:4 }];
-  const due = tiers.filter(t => gcBk.done[t.id] !== t.key); if (!due.length) return;
+  const tiers = [{ id:'daily', prefix:'guestlogin-backup-daily-', key:gcToday(), keep:7 }, { id:'weekly', prefix:'guestlogin-backup-weekly-', key:'W' + gcWeek(), keep:4 }];
+  const due = tiers.filter(t => gcBk.done[t.id] !== t.key); if (!due.length) return 0;
   const meta = await (await driveFetch(`https://www.googleapis.com/drive/v3/files/${CONFIG.GUESTLOGIN_FILE_ID}?fields=parents`)).json();
   const parent = (meta.parents || [])[0]; if (!parent) throw new Error('guest file folder not found');
-  const q = encodeURIComponent(`'${parent}' in parents and trashed=false and name contains 'guestlogin_'`);
-  const files = ((await (await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&fields=files(id,name)`)).json()).files || []);
+  const folder = await gcBackupFolder(parent), q = encodeURIComponent(`'${folder}' in parents and trashed=false`);
+  const files = ((await (await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=200&fields=files(id,name,createdTime)`)).json()).files || []);
+  let made = 0;
   for (const t of due){
     const name = `${t.prefix}${t.key}.json`;
-    if (!files.some(f => f.name === name)){ const id = await createJsonFile(parent, name, snapshot); files.push({ id:id, name:name }); }
+    if (!files.some(f => f.name === name)){ const id = await createJsonFile(folder, name, snapshot); files.push({ id:id, name:name, createdTime:new Date().toISOString() }); made++; }
     gcBk.done[t.id] = t.key;
-    const mine = files.filter(f => f.name.startsWith(t.prefix)).sort((x, y) => y.name.localeCompare(x.name));
+    const mine = files.filter(f => f.name.startsWith(t.prefix)).sort((x, y) => String(y.createdTime).localeCompare(String(x.createdTime)));
     for (const old of mine.slice(t.keep)){ try{ await trashFile(old.id); }catch(e){} }
   }
+  return made;
 }
 async function gcSave(mutate, okMsg){                         // re-reads the file first so two admins don't overwrite each other
   try{
@@ -68,7 +77,8 @@ async function gcSave(mutate, okMsg){                         // re-reads the fi
 const gcLog = (g, type, extra) => { (g.history = g.history || []).push(Object.assign({ type:type, date:new Date().toISOString(), by:userEmail }, extra || {})); };
 
 function gcMessage(g){
-  return `Welcome to ${(typeof state !== 'undefined' && state.profile && state.profile.name) || 'Gaia Lake'}! To view our menu and order meals, open ${CONFIG.GUEST_MENU_URL.replace(/index\.html$/, '')} and log in with your name, phone number and this code: ${g.code}\nYour code works until ${GC_CUT} AM on ${g.checkout}.`;
+  const img = (typeof state !== 'undefined' && state.profile && state.profile.waImage) ? state.profile.waImage + '\n\n' : '';   // picture link first, so WhatsApp shows it as the preview
+  return img + `Welcome to ${(typeof state !== 'undefined' && state.profile && state.profile.name) || 'Gaia Lake'}! To view our menu and order meals, open ${CONFIG.GUEST_MENU_URL.replace(/index\.html$/, '')} and log in with your name, phone number and this code: ${g.code}\nYour code works until ${GC_CUT} AM on ${g.checkout}.`;
 }
 
 function gcRender(){
@@ -81,6 +91,7 @@ function gcRender(){
       <span><strong>Require guest login</strong><br><span class="hint">On: guests must log in with name, phone and code to view the menu and order. Off: the menu stays open as before. Applies at once, no redeploy.</span></span></div></div>
     <div class="panel-box"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-primary" id="gcAdd">+ Add guest</button>
+      <button class="btn btn-sm" id="gcBkNow" title="Save a backup copy of the guest list now">Back up now</button>
       <input id="gcSearch" placeholder="Search name, phone, code, room…" value="${esc(GC.q)}" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);">
       ${gcOld(all).length ? `<button class="btn btn-sm btn-danger" id="gcClean">Delete all expired / revoked (${gcOld(all).length})</button>` : ''}
       <span class="hint">${list.length} of ${all.length}</span></div></div>
@@ -88,6 +99,10 @@ function gcRender(){
     ${list.map(gcCard).join('') || '<p class="hint">No guests yet.</p>'}`;
   gcEl('gcReq').onchange = async e => { state.settings.requireGuestLogin = e.target.checked; try{ await persist(false); toast(e.target.checked ? 'Guest login is now required' : 'Guest login is off — menu is open'); }catch(x){ toast('Not saved: ' + x.message); } };
   gcEl('gcAdd').onclick = () => { GC.edit = { id:'', group:false, basis:'BB', checkin:gcToday(), checkout:'' }; gcRender(); gcEl('gcForm').scrollIntoView({ behavior:'smooth' }); };
+  gcEl('gcBkNow').onclick = async () => {
+    try{ toast('Backing up…'); gcBk.done = {}; const n = await gcBackup(await downloadJsonFile(CONFIG.GUESTLOGIN_FILE_ID)); toast(n ? 'Backup saved in the GuestLog → Backup folder' : "Today's backups already exist"); }
+    catch(e){ toast('Backup failed: ' + e.message); }
+  };
   if (gcEl('gcClean')) gcEl('gcClean').onclick = async () => {
     const n = gcOld(GC.data.guests).length;
     if (!confirm('Permanently delete ' + n + ' expired or revoked guest record(s)? Active guests are not touched. This cannot be undone.')) return;

@@ -1,5 +1,14 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.9 — 4 Oct 2026
+- **Stronger login protection.** Any 3 wrong logins from the same phone or browser (whatever codes were tried) pause login for 10 minutes; 3 more wrong ones stop login for that browser for several hours with a "contact management" message. A code that gets 3 + 3 wrong tries is locked until a new code is issued. If many wrong logins arrive across all guests, login pauses for everyone for 10 minutes (`Code.gs`, `login.js`).
+- **Past meal times.** Once today's Breakfast, Lunch or Dinner time has passed, that meal can no longer be ordered for today; the date picker starts from tomorrow and the server enforces it too (`orders.js`, `Code.gs`).
+- **Clearer date message.** Picking a date outside the stay now shows "Oops! That date is beyond your stay. Please select a date within your stay (Check-out: …)" and leaves the date blank instead of changing it.
+- **Photo beside the item name.** The dish photo now sits at the top right of each order line, so the date selector keeps its full width.
+- **Guest list backups** now go into a "Backup" sub-folder of the GuestLog folder, named `guestlogin-backup-daily-YYYY-MM-DD.json` (7 kept) and `guestlogin-backup-weekly-W##.json` (4 kept). A "Back up now" button was added to Admin → Guest Codes.
+- **WhatsApp welcome image.** Admin → Profile has a new "WhatsApp welcome image link" field; if filled, the link is added to the first line of the guest login WhatsApp message (`admin.html`, `guestcodes.js`).
+- Copyright notice added at the top of `index.html` and `admin.html` (hidden comment).
+
 ## v3.0.8 — 4 Oct 2026
 - **Welcome before check-in.** A logged-in guest whose check-in date is still ahead no longer sees "Open to Order …" or the Open/Closed badge; they see "Welcome! Please pre-order your meals below". After check-in the opening-hours line shows as before.
 - **Notices are easier to see.** The "date set to the nearest available date" and "selections restored" messages are now bright yellow with dark text, readable in dark and light mode.

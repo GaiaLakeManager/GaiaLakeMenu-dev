@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.8",
-  WHATS_NEW_LATEST: "Guests who have not checked in yet now see a welcome message, notices are easier to see in dark mode, and the guest list is backed up automatically."
+  APP_VERSION: "3.0.9",
+  WHATS_NEW_LATEST: "Stronger protection against code guessing, past meal times can no longer be ordered for today, clearer date messages, and guest list backups in their own folder."
 };

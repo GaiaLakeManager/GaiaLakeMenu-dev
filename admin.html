@@ -1,4 +1,13 @@
 <!DOCTYPE html>
+<!--
+======================================================================
+Creator: Prasanna Kurukuladithya (Priya)
+Application: Gaia Lake Kandalama Guest Food and Beverage Menu
+Copyright © 2026. All rights reserved.
+Usage Notice: Internal operational tool. Unauthorized copying, modification,
+or redistribution is strictly prohibited.
+======================================================================
+-->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -119,6 +128,7 @@
           <div class="field"><label>Restaurant Name</label><input type="text" id="pName"></div>
           <div class="field-row">
             <div class="field"><label>Phone Number</label><input type="tel" id="pPhone" placeholder="+94 77 291 1501"></div>
+            <div class="field"><label>WhatsApp welcome image link <span class="hint">(optional — a direct link to a picture, e.g. https://…/welcome.jpg; it is added to the first line of the guest login WhatsApp message)</span></label><input type="url" id="pWaImage" placeholder="https://"></div>
             <div class="field"><label>City</label><input type="text" id="pCity" placeholder="Kandalama"></div>
           </div>
           <div class="field"><label>Country</label><input type="text" id="pCountry" placeholder="Sri Lanka"></div>
@@ -1017,6 +1027,7 @@ function renderProfile(){
   const p = state.profile;
   document.getElementById('pName').value = p.name||'';
   document.getElementById('pPhone').value = p.phone||'';
+  document.getElementById('pWaImage').value = p.waImage||'';
   document.getElementById('pCity').value = p.city||'';
   document.getElementById('pCountry').value = p.country||'';
   document.getElementById('logoDrop').innerHTML = p.logoFileId
@@ -1030,6 +1041,7 @@ dropzoneHandler(document.getElementById('bannerDrop'), document.getElementById('
 document.getElementById('saveProfileBtn').onclick = async () => {
   state.profile.name = document.getElementById('pName').value.trim();
   state.profile.phone = document.getElementById('pPhone').value.trim();
+  state.profile.waImage = document.getElementById('pWaImage').value.trim();
   state.profile.city = document.getElementById('pCity').value.trim();
   state.profile.country = document.getElementById('pCountry').value.trim();
 

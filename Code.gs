@@ -60,6 +60,7 @@ function doPost(e){
         time = meal === 'T' ? (it.t || o.time) : slot[meal];                // Specific time = the guest's clock time; otherwise the meal's reference time
         if (!dt.test(date || '') || !tm.test(time || '') || date < today) return reject('Please check the dining date and time.');
         if (date < minDate) return reject('Same-day orders are closed for today. Please choose tomorrow or a later date.');
+        if (catMeal[d.categoryId] && date === today && nowSL >= slot[catMeal[d.categoryId]]) return reject('Today\u2019s ' + MNAME[catMeal[d.categoryId]] + ' time (' + slot[catMeal[d.categoryId]] + ') has passed. Please choose tomorrow or a later date.');
         if (meal === 'T' && (time < openT || time > lastT)) return reject('A specific time must be between ' + openT + ' and ' + lastT + '. For any other time, please add a note.');
         if (meal === 'T' && date === today && time < nowSL) return reject('That time has already passed today. Please choose a later time or another date.');
         if (G){                                                            // login mode: stay window and set-menu rules
@@ -107,7 +108,7 @@ function notify(r, P){
    Records live in a PRIVATE guestlogin.json (id in Script Property GUESTLOGIN_FILE_ID); the browser never reads it.
    Record: { id, code, name, phone, checkin, checkout, basis:'RO|BB|HB|FB', group:bool, room, groupLabel, fixed:[category ids], revoked:bool } */
 const GL_PLAN = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] };   // meals included in each booking basis
-const GL_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', GL_CUTOFF = '09:00', GL_GLOBAL_MAX = 30;
+const GL_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', GL_CUTOFF = '09:00', GL_GLOBAL_MAX = 20;
 const GL_BAD = 'Name, phone number or code doesn\u2019t match our records.', GL_CONTACT = 'Too many failed attempts. Please contact Gaia Lake management for a new code.';
 function glName(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
 function glPhone(s){ return String(s || '').replace(/\D/g, '').replace(/^00/, ''); }
@@ -132,22 +133,26 @@ function guestLogin(o, P){
     const found = glFind(P, code, nm, ph);
     if (!found) return out({ ok:false, error:'Guest login is not set up yet.' });
     if (!quiet){
-      if (cache.get('glp')) return out({ ok:false, error:'Login is busy right now. Please try again in a few minutes, or contact Gaia Lake management.' });
-      const st = JSON.parse(cache.get(fk) || '{"n":0,"stage":1,"until":0}');
-      if (st.stage > 2 || P.getProperty('gld_' + code)) return out({ ok:false, error:GL_CONTACT });
-      if (st.until > now) return out({ ok:false, error:'Too many attempts. Please try again in ' + Math.ceil((st.until - now) / 60000) + ' minutes.' });
+      if (cache.get('glp')) return out({ ok:false, error:'Login is busy right now. Please try again in about 10 minutes, or contact Gaia Lake management.' });
+      const did = String(o.did || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40), dk = 'gldv_' + did, blank = '{"n":0,"stage":1,"until":0}';
+      const dv = did.length >= 8 ? JSON.parse(cache.get(dk) || blank) : null;            // per-device counter (any code); the code has its own counter too
+      const st = JSON.parse(cache.get(fk) || blank), both = dv ? [dv, st] : [st];
+      if (both.some(x => x.stage > 2) || P.getProperty('gld_' + code)) return out({ ok:false, error:GL_CONTACT });
+      const wait = Math.max.apply(null, both.map(x => x.until)) - now;
+      if (wait > 0) return out({ ok:false, error:'Too many attempts. Please try again in ' + Math.ceil(wait / 60000) + ' minutes.' });
       if (!found.match){
-        let msg = GL_BAD; st.n++;
-        if (st.n >= 3){
-          if (st.stage === 1){ st.stage = 2; st.n = 0; st.until = now + 15 * 60000; msg = 'Too many attempts. Please try again in 15 minutes.'; }
-          else { st.stage = 3; msg = GL_CONTACT; if (found.rec) P.setProperty('gld_' + code, '1'); }
-        }
-        cache.put(fk, JSON.stringify(st), 21600);
+        let msg = GL_BAD;
+        both.forEach(x => { x.n++; if (x.n >= 3){
+          if (x.stage === 1){ x.stage = 2; x.n = 0; x.until = now + 10 * 60000; msg = 'Too many attempts. Please try again in 10 minutes.'; }   // 3 wrong -> 10 minutes
+          else { x.stage = 3; msg = GL_CONTACT; }                                                                                             // 3 more wrong -> stopped
+        } });
+        if (st.stage === 3 && found.rec) P.setProperty('gld_' + code, '1');                // a real code that was attacked stays locked until a new code is issued
+        cache.put(fk, JSON.stringify(st), 21600); if (dv) cache.put(dk, JSON.stringify(dv), 21600);
         const gn = Number(cache.get('glg') || 0) + 1; cache.put('glg', String(gn), 600);
-        if (gn >= GL_GLOBAL_MAX){ cache.put('glp', '1', 300); cache.remove('glg'); }   // everyone pauses a few minutes
+        if (gn >= GL_GLOBAL_MAX){ cache.put('glp', '1', 600); cache.remove('glg'); }       // too many failures overall: everyone pauses 10 minutes
         return out({ ok:false, error:msg });
       }
-      cache.remove(fk);
+      cache.remove(fk); if (dv) cache.remove(dk);
     } else if (!found.match) return out({ ok:false, reason:'invalid', error:GL_BAD });
     const s = glState(found.rec);
     if (s === 'expired') return out({ ok:false, reason:'expired', error:'This code has expired (valid until ' + GL_CUTOFF + ' on the check-out date).' });

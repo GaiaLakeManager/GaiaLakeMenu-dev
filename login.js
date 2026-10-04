@@ -27,10 +27,13 @@ const glRequired = data => (CONFIG.GUEST_LOGIN_FORCE === true || (data.settings 
 const glSaved = () => { try{ const s = JSON.parse(localStorage.getItem(GL_KEY) || 'null'); return s && s.name && s.phone && s.code ? s : null; }catch(e){ return null; } };
 const glClear = () => { try{ localStorage.removeItem(GL_KEY); }catch(e){} };
 
+function glDevice(){                                // random id of this browser, used only to slow down guessing
+  try{ let v = localStorage.getItem('gl-did'); if (!v){ const b = new Uint8Array(12); crypto.getRandomValues(b); v = [...b].map(x => x.toString(36).padStart(2, '0')).join(''); localStorage.setItem('gl-did', v); } return v; }catch(e){ return ''; }
+}
 async function glCall(action, d){                   // -> { ok, guest | error, reason }
   const c = new AbortController(), t = setTimeout(() => c.abort(), 20000);
   try{
-    const r = await fetch(CONFIG.ORDER_SCRIPT_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify({ action:action, name:d.name, phone:d.phone, code:d.code }), signal:c.signal });
+    const r = await fetch(CONFIG.ORDER_SCRIPT_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify({ action:action, name:d.name, phone:d.phone, code:d.code, did:glDevice() }), signal:c.signal });
     return await r.json();
   }catch(e){ return { ok:false, network:true, error:'Couldn\u2019t reach the server. Please check your connection and try again.' }; }
   finally{ clearTimeout(t); }

@@ -89,7 +89,7 @@ function notices(){
 function itemWhen(l){                                                // per-item date (and meal) — shown only when the admin per-item switch is on
   if (!askWhen() || !perItem()) return '';
   const w = when(l), h = hours(), grp = isGroupRoom(OS.f.room);
-  const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDate()}" max="${maxDate()}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
+  const dIn = `<div class="ol-when-lbl">Please select date</div><div class="dt-row"><input type="date" class="od" min="${minDateFor(l.c)}" max="${maxDate()}" value="${w.d}"><small class="fmt">${fmtOf('date', w.d)}</small></div>`;
   if (fixedMeal(l.c)) return `<div class="ol-when">${dIn}</div>`;
   const sel = `<div class="ol-when-lbl">${l.m === 'T' ? 'Serve at' : 'Serve for'}</div><select class="om">${l.m ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${l.m === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${l.m === 'T' ? ' selected' : ''}>Specific time</option></select>`;
   const tIn = l.m === 'T' ? `<div class="dt-row"><input type="time" class="ot" min="${h.open}" max="${h.last}" value="${l.t || ''}"><small class="fmt">${fmtOf('time', l.t)}</small></div><div class="hint">Between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
@@ -101,7 +101,7 @@ function whenBlock(){                                                // order-le
   const ms = [...new Set(fx.map(l => fixedMeal(l.c)))], grp = isGroupRoom(f.room);
   let top = '';
   if (!perItem()){
-    const dIn = `<label class="dt">Dining date <em class="fh">(day / month / year)</em><input type="date" id="fDate" min="${minDate()}" max="${maxDate()}" value="${dv}"><small class="fmt">${fmtOf('date', dv)}</small></label>`;
+    const dIn = `<label class="dt">Dining date <em class="fh">(day / month / year)</em><input type="date" id="fDate" min="${minDateAll()}" max="${maxDate()}" value="${dv}"><small class="fmt">${fmtOf('date', dv)}</small></label>`;
     const sel = allFx ? '' : `<label>${meal === 'T' ? 'Serve at' : 'Serve for'}<select id="fMeal">${meal ? '' : '<option value="">Select…</option>'}${['B','L','D'].map(m => `<option value="${m}"${meal === m ? ' selected' : ''}>${MEALS[m]}</option>`).join('')}<option value="T"${meal === 'T' ? ' selected' : ''}>Specific time</option></select></label>`;
     const tIn = !allFx && meal === 'T' ? `<label class="dt">Time <em class="fh">(hour : minute)</em><input type="time" id="fTime" min="${h.open}" max="${h.last}" value="${f.time || ''}"><small class="fmt">${fmtOf('time', f.time)}</small></label><div class="hint">A specific time must be between ${to12h(h.open)} and ${to12h(h.last)}.</div>` : '';
     const note = allFx ? `<div class="o-bf">🍽️ ${ms.length === 1 ? `For ${MEALS[ms[0]]}.` : 'Each item is served at its own meal (' + ms.map(m => MEALS[m]).join(', ') + ').'} Just choose the date.</div>` : '';
@@ -118,9 +118,9 @@ function showForm(err){
   $('orderTitle').textContent = OS.amend ? 'Amend your order' : 'Your order';
   $('orderBody').innerHTML = notices() +
     ([...OS.cart.entries()].map(([k, l]) => `<div class="ol" data-k="${esc(k)}">
-      <div class="ol-top"><b><span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}</b>${l.s ? `<small>${esc(l.s)}</small>` : ''}</div>
+      <div class="ol-top"><div class="ol-name"><b><span class="item-no">${code3(l.c)}</span> ${esc(dishBy(l.c)?.name || '')}</b>${l.s ? `<small>${esc(l.s)}</small>` : ''}</div>${olThumb(l.c)}</div>
       <div class="ol-ctl"><button class="q" data-d="-1">−</button><span>${l.q}</span><button class="q" data-d="1">+</button>${askWhen() && fixedMeal(l.c) ? `<span class="for-tag">For ${MEALS[fixedMeal(l.c)]}</span>` : ''}<span class="ol-p">${(OS.f.bb && isBB(l.c)) ? 'Included (' + (GUEST ? GUEST.basis : 'BB') + ')' : usd(unit(l.c, l.s) * l.q)}</span><button class="q rm" data-rm="1">×</button></div>
-      <div class="ol-bot"><div class="ol-bot-main">${itemWhen(l)}</div>${olThumb(l.c)}</div></div>`).join('') || '<p>Your order is empty.</p>') +
+      ${itemWhen(l)}</div>`).join('') || '<p>Your order is empty.</p>') +
     (!GUEST && cartHasBB() ? `<label class="bb-box${f.bb ? ' on' : ''}" style="display:flex;flex-wrap:nowrap;align-items:center;gap:10px;margin:8px 0 4px;cursor:pointer;opacity:${f.bb ? 1 : .55};"><input type="checkbox" id="fBB" ${f.bb ? 'checked' : ''} style="display:inline-block;width:20px;height:20px;min-height:0;margin:0;padding:0;flex:0 0 20px;"><span style="flex:1 1 auto;min-width:0;font-size:.82rem;line-height:1.35;">On Bed &amp; Breakfast — this breakfast is included in my room rate.</span></label>${f.bb ? `<div class="hint">If this isn't correct, your order will be billed at the full price.</div>` : ''}` : '') +
     `<div class="o-total"><span>Total</span><b>${totalTxt()}</b></div>` + whenBlock() +
     (err ? `<div class="o-err" id="oErr">${esc(err)}</div>` : '') + `<label>Your name<input id="fName" autocomplete="name"${GUEST ? ' readonly' : ''} value="${esc(f.name || '')}"></label>
@@ -140,7 +140,7 @@ function check(){
     const w = when(l);
     if (!w.d) return 'Please choose a dining date.';
     if (w.d < today()) return 'The dining date cannot be in the past.';
-    if (w.d < minDate()) return GUEST && GUEST.checkin > today() ? `Please choose a date from your check-in date (${fmtDate(GUEST.checkin)}).` : `Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.`;
+    if (w.d < minDateFor(l.c)) return w.d === today() && slotPassedToday(l.c) ? `Today\u2019s ${MEALS[fixedMeal(l.c)]} time (${to12h(mealTime(fixedMeal(l.c)))}) has passed. Please choose tomorrow or a later date.` : GUEST && GUEST.checkin > today() ? `Please choose a date from your check-in date (${fmtDate(GUEST.checkin)}).` : `Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.`;
     if (GUEST){
       if (w.d < GUEST.checkin) return `Please choose a date from your check-in date (${fmtDate(GUEST.checkin)}).`;
       if (w.d > GUEST.checkout) return `Orders can only be placed up to your check-out date (${fmtDate(GUEST.checkout)}).`;
@@ -251,20 +251,18 @@ $('orderBody').addEventListener('change', e => {
 });
 
 /* Date pickers: a phone can scroll to dates the PC calendar greys out. Snap any out-of-range pick to the nearest allowed date (same result as the PC). */
-let dateToastT;
 $('orderModal').addEventListener('change', e => {
   const t = e.target; if (!t || t.type !== 'date' || !t.value) return;
-  let v = t.value; if (t.min && v < t.min) v = t.min; if (t.max && v > t.max) v = t.max;
-  if (v === t.value) return;
-  t.value = v;
-  olToast('That date isn\u2019t available — set to the nearest available date (' + fmtDate(v) + ').');
+  const beyond = t.max && t.value > t.max, before = t.min && t.value < t.min; if (!beyond && !before) return;
+  t.value = '';                                     // do not adjust the date: leave it blank for the guest to choose again
+  olToast(beyond ? 'Oops! That date is beyond your stay. Please select a date within your stay (Check-out: ' + fmtDate(t.max) + ').' : 'Oops! That date is not available. The earliest date you can choose is ' + fmtDate(t.min) + '.', 7000);
 }, true);
 
 /* Photo thumbnail at the bottom-right of each order line; tap it to enlarge (v3.0.6). */
 (function(){
   const st = document.createElement('style');
-  st.textContent = `.ol-bot{display:flex;align-items:flex-end;gap:10px}.ol-bot-main{flex:1;min-width:0}
-  .ol-th{flex:none;width:52px;height:52px;margin:8px 0 0;padding:0;border:1px solid var(--line,#e7e0d2);border-radius:8px;overflow:hidden;background:var(--paper,#fff);cursor:zoom-in;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+  st.textContent = `.ol .ol-top{display:flex;flex-direction:row;align-items:flex-start;gap:10px}.ol-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .ol-th{flex:none;width:48px;height:48px;margin:0;padding:0;border:1px solid var(--line,#e7e0d2);border-radius:8px;overflow:hidden;background:var(--paper,#fff);cursor:zoom-in;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
   .ol-th img{width:100%;height:100%;object-fit:cover;display:block}.ol-th.none{cursor:default;opacity:.55}
   #olBox{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;cursor:zoom-out}
   #olBox img{max-width:96vw;max-height:78vh;border-radius:12px;object-fit:contain;background:#222}#olBox .cap{color:#fff;font:600 1.05rem 'Manrope',sans-serif;text-align:center}#olBox .hint{color:#ccc;font:500 .85rem 'Manrope',sans-serif}`;
@@ -318,8 +316,16 @@ function restoreCart(){
 
 /* Notice that stands out in both light and dark mode (v3.0.8). */
 let olToastT;
-function olToast(msg){
+function olToast(msg, ms){
   let b = document.getElementById('olToast');
   if (!b){ b = document.createElement('div'); b.id = 'olToast'; b.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);width:max-content;max-width:90%;background:#ffd54f;color:#1a1a1a;border:2px solid #f9a825;box-shadow:0 6px 24px rgba(0,0,0,.55);padding:12px 16px;border-radius:12px;font:700 .95rem Manrope,sans-serif;z-index:100000;text-align:center'; document.body.appendChild(b); }
-  b.textContent = msg; b.style.display = 'block'; clearTimeout(olToastT); olToastT = setTimeout(() => { b.style.display = 'none'; }, 4500);
+  b.textContent = msg; b.style.display = 'block'; clearTimeout(olToastT); olToastT = setTimeout(() => { b.style.display = 'none'; }, ms || 4500);
 }
+
+/* Same-day rule: once today's Breakfast / Lunch / Dinner time has passed, that meal can no longer be ordered for today (v3.0.9). */
+function slotPassedToday(c){ const m = fixedMeal(c); return !!m && nowHM() >= mealTime(m); }
+function minDateFor(c){
+  const b = minDate(); if (b !== today() || !slotPassedToday(c)) return b;
+  const t = tomorrow(); return GUEST && GUEST.checkin > t ? GUEST.checkin : t;
+}
+function minDateAll(){ return lines().reduce((m, l) => { const x = minDateFor(l.c); return x > m ? x : m; }, minDate()); }
