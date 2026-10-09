@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.10",
-  WHATS_NEW_LATEST: "The menu link now shows a welcome picture and title when it is shared on WhatsApp."
+  APP_VERSION: "3.0.11",
+  WHATS_NEW_LATEST: "Group bookings: after the first order, the group code works on that one device only."
 };

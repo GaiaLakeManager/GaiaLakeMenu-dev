@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest ordering (v2.0.4). Loaded by index.html after the menu script. */
+/* Gaia Lake Menu — guest ordering (v3.0.11). Loaded by index.html after the menu script. */
 let ORDERING = false;
 const menuData = () => window.MENU || {};   // index.html stores the loaded menu in window.MENU
 const OS = { cart:new Map(), amend:null, lastId:null, id:null, f:{}, text:'' };
@@ -82,6 +82,7 @@ function grab(){
 }
 function notices(){
   const h = hours(); let n = '';
+  if (GUEST && GUEST.group) n += `<div class="o-note">Displaying your ordering for the whole group — group selection policy applies.</div>`;
   if (askWhen() && pastCutoff() && !(GUEST && GUEST.checkin > today())) n += `<div class="o-note">Same-day orders are closed for today (after ${to12h(h.cutoff)}). Please choose tomorrow or a later date.</div>`;
   if (!kitchenOpenNow()) n += `<div class="o-note">The kitchen is closed right now. Your order will still be sent and seen when we open at ${to12h(h.open)}.</div>`;
   return n;
@@ -174,7 +175,7 @@ function showReview(){
 function payload(){
   const f = OS.f, ask = askWhen(); OS.id = OS.id || 'GL-' + Array.from({ length:6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
   return { v:2, id:OS.id, amend:OS.amend || undefined, name:f.name.trim(), room:f.room.trim(), phone:f.phone.replace(/[\s\-()]/g, ''), date:ask ? (f.date || minDate()) : '', meal:ask ? (f.meal || '') : '', time:ask ? (f.time || '') : '',
-    note:(f.note || '').trim() || undefined, total:total(), planIncluded:!!f.bb, gc:GUEST ? (glSaved() || {}).code : undefined, website:f.web || '',
+    note:(f.note || '').trim() || undefined, total:total(), planIncluded:!!f.bb, gc:GUEST ? (glSaved() || {}).code : undefined, did:GUEST ? glDevice() : undefined, website:f.web || '',
     items:lines().map(l => { const w = when(l); return { c:Number(l.c), s:l.s || undefined, q:l.q, d:w.d || undefined, m:w.m || undefined, t:w.t || undefined }; }) };
 }
 function orderText(o){   // human-readable order + one #GLORDER line the admin paste box can read

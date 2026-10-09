@@ -1,5 +1,10 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.11 — 9 Oct 2026
+- **Group bookings: one device places the order.** When a group guest sends the first order, that phone or browser is locked to the group code. Anyone trying the same code on another device sees "This group code is already in use on another device…" (at login and when ordering). Individual guests are not affected. The lock is shown on the guest's card in Admin → Guest Codes ("device locked"); **Clear device lock** frees it (for example if the leader changes phone), and **New code** also clears it. The lock is written to the history as "device locked" (`Code.gs`, `orders.js`).
+- **Group message.** Group guests see "Displaying your ordering for the whole group — group selection policy applies." at the top of the order and review screens (`orders.js`).
+- Upload `Code.gs` to Apps Script and deploy a **New version**.
+
 ## v3.0.10 — 4 Oct 2026
 - **Link preview picture.** The menu page now carries preview tags (title, description and the picture `welcome.jpg`), so when the menu link is shared on WhatsApp it shows the picture and title. The picture address is a full URL in `index.html` (the `og:image` line): the DEV file points to the dev repo, so change that one line to the live repo's address when launching (`index.html`).
 

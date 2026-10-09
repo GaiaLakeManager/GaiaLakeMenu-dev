@@ -31,7 +31,9 @@ function doPost(e){
       const f = glFind(P, String(o.gc || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), glName(o.name), glPhone(o.phone));
       if (!f || !f.match) return reject('Your login is no longer valid. Please log in again.');
       const st = glState(f.rec); if (st !== 'ok') return reject(st === 'expired' ? 'Your login code has expired.' : 'Your login code is no longer active.');
-      G = f.rec; name = G.name; phone = '+' + glPhone(G.phone); room = G.group ? (G.groupLabel || 'Group') : (G.room || '');
+      G = f.rec;
+      if (G.group){ const did = glDid(o); if (did.length < 8) return reject('Your browser could not be identified. Please turn off private browsing and log in again.'); if (G.device && G.device !== did) return reject(GL_DEVICE); }
+      name = G.name; phone = '+' + glPhone(G.phone); room = G.group ? (G.groupLabel || 'Group') : (G.room || '');
     }
     const nowSL = Utilities.formatDate(new Date(), 'Asia/Colombo', 'HH:mm'), today = Utilities.formatDate(new Date(), 'Asia/Colombo', 'yyyy-MM-dd');
     const ask = true, slot = { B:S.breakfastTime || '07:30', L:S.lunchTime || '12:30', D:S.dinnerTime || '19:30' };
@@ -87,6 +89,7 @@ function doPost(e){
       date:o.date || '', meal:String(o.meal || ''), time:o.time || '', note:String(o.note || '').slice(0,300), items:items, total:total, planIncluded:planIncluded, bbValue:bbValue, basis:G ? G.basis : '', verified:!!G,
       priceAdjusted:Math.round(Number(o.total) * 100) !== Math.round(total * 100), via:'web', receivedOutsideHours:outsideHours };
     folder.createFile(o.id + '.json', JSON.stringify(rec), 'application/json');
+    if (G && G.group && !G.device){ try{ glLockDevice(P, G, glDid(o)); }catch(e){ Logger.log('Device lock failed: ' + e); } }   // the order is already saved; a lock problem never blocks it
     }finally{ lock.releaseLock(); }                                        // released before the slow email/Telegram calls
     notify(rec, P);
     return out({ ok:true, id:o.id });
@@ -110,6 +113,16 @@ function notify(r, P){
 const GL_PLAN = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] };   // meals included in each booking basis
 const GL_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', GL_CUTOFF = '09:00', GL_GLOBAL_MAX = 20;
 const GL_BAD = 'Name, phone number or code doesn\u2019t match our records.', GL_CONTACT = 'Too many failed attempts. Please contact Gaia Lake management for a new code.';
+const GL_DEVICE = 'This group code is already in use on another device. One device places the order for the whole group. Please contact Gaia Lake reception for help.';
+function glDid(o){ return String(o.did || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40); }          // random id of the guest's browser (sent by the page)
+function glLockDevice(P, g, did){                                          // group codes: remember the device that placed the first order (admin can clear it in Guest Codes)
+  const f = DriveApp.getFileById(P.getProperty('GUESTLOGIN_FILE_ID')), data = JSON.parse(f.getBlob().getDataAsString());   // re-read just before writing so admin edits are kept
+  const r = (data.guests || []).find(x => (g.id && x.id === g.id) || (!g.id && String(x.code).toUpperCase() === String(g.code).toUpperCase()));
+  if (!r || r.device) return;
+  r.device = did; r.deviceAt = new Date().toISOString();
+  (r.history = r.history || []).push({ type:'device locked', date:new Date().toISOString(), by:'first order' });
+  f.setContent(JSON.stringify(data));
+}
 function glName(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
 function glPhone(s){ return String(s || '').replace(/\D/g, '').replace(/^00/, ''); }
 function glAnswer(g){ return { ok:true, guest:{ name:g.name, phone:g.phone, room:g.room || '', groupLabel:g.groupLabel || '', group:!!g.group, basis:g.basis, checkin:g.checkin || '', checkout:g.checkout, fixed:g.fixed || [], expires:g.checkout + ' ' + GL_CUTOFF } }; }
@@ -157,6 +170,7 @@ function guestLogin(o, P){
     const s = glState(found.rec);
     if (s === 'expired') return out({ ok:false, reason:'expired', error:'This code has expired (valid until ' + GL_CUTOFF + ' on the check-out date).' });
     if (s === 'revoked') return out({ ok:false, reason:'revoked', error:'This code is no longer active. Please contact reception for a new code.' });
+    if (found.rec.group && found.rec.device){ const did = glDid(o); if (did !== found.rec.device) return out({ ok:false, reason:'device', error:GL_DEVICE }); }   // locked group code, different device
     return out(glAnswer(found.rec));
   }finally{ lock.releaseLock(); }
 }
