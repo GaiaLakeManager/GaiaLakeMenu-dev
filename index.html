@@ -120,7 +120,7 @@ function render(data){
   window.MENU = data;
   const profile = data.profile || {};
   const settings = data.settings || {};
-  ORDERING = !!CONFIG.ORDER_SCRIPT_URL && settings.acceptingOrders !== false;
+  ORDERING = !!CONFIG.ORDER_SCRIPT_URL && settings.acceptingOrders !== false && !(GUEST && GUEST.viewOnly);   // view-only group device: no Add buttons
   const theme = settings.theme || CONFIG.DEFAULT_THEME;
   root.style.setProperty('--brand-1', theme.primary || CONFIG.DEFAULT_THEME.primary);
   root.style.setProperty('--brand-2', theme.secondary || CONFIG.DEFAULT_THEME.secondary);

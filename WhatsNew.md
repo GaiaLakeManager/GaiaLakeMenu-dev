@@ -1,5 +1,10 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.12 — 9 Oct 2026
+- **Group members can browse; one device orders.** After a group's first order, the group code still logs in on other phones, but those phones are view-only: the **+ Add** buttons and the order bar are hidden, and a notice under the header says "Group orders are submitted through one primary device. Feel free to browse here and pass your choices to your group leader." The server still refuses any order from another device. A phone that already had items in its cart is told the same thing when it taps Review order, and the page reloads view-only (`Code.gs`, `login.js`, `orders.js`, `index.html`).
+- The refusal message now says "contact Gaia Lake staff" instead of "reception".
+- Upload `Code.gs` to Apps Script and deploy a **New version**.
+
 ## v3.0.11 — 9 Oct 2026
 - **Group bookings: one device places the order.** When a group guest sends the first order, that phone or browser is locked to the group code. Anyone trying the same code on another device sees "This group code is already in use on another device…" (at login and when ordering). Individual guests are not affected. The lock is shown on the guest's card in Admin → Guest Codes ("device locked"); **Clear device lock** frees it (for example if the leader changes phone), and **New code** also clears it. The lock is written to the history as "device locked" (`Code.gs`, `orders.js`).
 - **Group message.** Group guests see "Displaying your ordering for the whole group — group selection policy applies." at the top of the order and review screens (`orders.js`).

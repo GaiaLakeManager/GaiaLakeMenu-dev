@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest login (v3.0.6). Loaded by index.html after config.js.
+/* Gaia Lake Menu — guest login (v3.0.12). Loaded by index.html after config.js.
    Verification happens in Apps Script against a private file; this page only sends name + phone + code. */
 let GUEST = null;                                   // verified guest details (name, phone, room, basis, checkin, checkout, fixed …)
 const GL_KEY = 'gl-guest-session';
@@ -45,7 +45,7 @@ function glBar(){                                   // small "signed in" strip u
   const plan = { RO:'Room Only', BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' }[GUEST.basis] || '';
   const where = GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || '');
   const d = document.createElement('div'); d.className = 'gl-bar'; d.id = 'glBar';
-  d.innerHTML = `<span>👤 <strong>${esc(GUEST.name)}</strong>${where ? ' · ' + esc(where) : ''}${plan ? ' · ' + plan : ''}</span><button type="button" id="glOut">Log out</button>`;
+  d.innerHTML = `<span>👤 <strong>${esc(GUEST.name)}</strong>${where ? ' · ' + esc(where) : ''}${plan ? ' · ' + plan : ''}</span><button type="button" id="glOut">Log out</button>${GUEST.viewOnly ? '<span style="flex-basis:100%;text-align:center;font-weight:600;">Group orders are submitted through one primary device. Feel free to browse here and pass your choices to your group leader.</span>' : ''}`;
   const title = document.querySelector('.menu-title'); if (title && title.parentNode) title.parentNode.insertBefore(d, title);
   document.getElementById('glOut').onclick = () => { glClear(); location.reload(); };
 }

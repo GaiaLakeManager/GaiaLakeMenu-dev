@@ -113,7 +113,7 @@ function notify(r, P){
 const GL_PLAN = { RO:[], BB:['B'], HB:['B','D'], FB:['B','L','D'] };   // meals included in each booking basis
 const GL_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', GL_CUTOFF = '09:00', GL_GLOBAL_MAX = 20;
 const GL_BAD = 'Name, phone number or code doesn\u2019t match our records.', GL_CONTACT = 'Too many failed attempts. Please contact Gaia Lake management for a new code.';
-const GL_DEVICE = 'This group code is already in use on another device. One device places the order for the whole group. Please contact Gaia Lake reception for help.';
+const GL_DEVICE = 'This group code is already in use on another device. One device places the order for the whole group. Please contact Gaia Lake staff for help.';
 function glDid(o){ return String(o.did || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 40); }          // random id of the guest's browser (sent by the page)
 function glLockDevice(P, g, did){                                          // group codes: remember the device that placed the first order (admin can clear it in Guest Codes)
   const f = DriveApp.getFileById(P.getProperty('GUESTLOGIN_FILE_ID')), data = JSON.parse(f.getBlob().getDataAsString());   // re-read just before writing so admin edits are kept
@@ -170,8 +170,9 @@ function guestLogin(o, P){
     const s = glState(found.rec);
     if (s === 'expired') return out({ ok:false, reason:'expired', error:'This code has expired (valid until ' + GL_CUTOFF + ' on the check-out date).' });
     if (s === 'revoked') return out({ ok:false, reason:'revoked', error:'This code is no longer active. Please contact reception for a new code.' });
-    if (found.rec.group && found.rec.device){ const did = glDid(o); if (did !== found.rec.device) return out({ ok:false, reason:'device', error:GL_DEVICE }); }   // locked group code, different device
-    return out(glAnswer(found.rec));
+    const ans = glAnswer(found.rec);
+    if (found.rec.group && found.rec.device && glDid(o) !== found.rec.device) ans.guest.viewOnly = true;   // locked group code on another device: may log in and browse, but cannot order
+    return out(ans);
   }finally{ lock.releaseLock(); }
 }
 /* ONE-TIME TEST HELPER: add Script Property GUESTLOGIN_FOLDER_ID (the private folder), run once, read the code in the Execution log. */

@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest ordering (v3.0.11). Loaded by index.html after the menu script. */
+/* Gaia Lake Menu — guest ordering (v3.0.12). Loaded by index.html after the menu script. */
 let ORDERING = false;
 const menuData = () => window.MENU || {};   // index.html stores the loaded menu in window.MENU
 const OS = { cart:new Map(), amend:null, lastId:null, id:null, f:{}, text:'' };
@@ -34,6 +34,7 @@ function bar(){
 }
 function initOrdering(){
   bar();
+  if (GUEST && GUEST.viewOnly) return;                                     // v3.0.12: another device already orders for this group — browse only
   if (GUEST){ Object.assign(OS.f, { name:GUEST.name, phone:GUEST.phone, room:GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || ''), bb:gPlan().length > 0 }); }   // login mode: details come from the verified booking
   else try{ Object.assign(OS.f, JSON.parse(localStorage.getItem('gl-guest-details') || '{}')); }catch(e){}
   restoreCart(); bar();                                                   // v3.0.7: bring back the cart if the page was reloaded
@@ -45,7 +46,7 @@ document.addEventListener('click', e => {
 });
 $('openCart').onclick = () => {
   if (GUEST){ const s = glSaved(); if (s) glCall('check', s).then(r => {                                                      // quiet re-check runs in the background
-    if (!r.ok && !r.network){ glClear(); alert(r.error || 'Please log in again.'); location.reload(); } else if (r.ok) GUEST = r.guest; }); }
+    if (!r.ok && !r.network){ glClear(); alert(r.error || 'Please log in again.'); location.reload(); } else if (r.ok){ GUEST = r.guest; if (GUEST.viewOnly){ alert('Group orders are submitted through one primary device. Feel free to browse here and pass your choices to your group leader.'); location.reload(); } } }); }
   showForm(); $('orderModal').classList.add('open'); document.body.classList.add('o-lock'); $('orderModal').scrollTop = 0; };
 const closeO = () => { $('orderModal').classList.remove('open'); document.body.classList.remove('o-lock'); };
 

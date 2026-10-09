@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.11",
-  WHATS_NEW_LATEST: "Group bookings: after the first order, the group code works on that one device only."
+  APP_VERSION: "3.0.12",
+  WHATS_NEW_LATEST: "Group bookings: other phones can browse the menu; only the first ordering phone can order."
 };
