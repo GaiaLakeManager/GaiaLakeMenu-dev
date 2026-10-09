@@ -46,6 +46,7 @@ or redistribution is strictly prohibited.
       <div class="txt">Gaia Lake - Kandalama<small>Guest Food &amp; Beverage Menu</small><small class="role">Admin Control Panel</small></div>
     </div>
     <button class="navitem active" data-view="dashboard"><span class="ic">📊</span> Dashboard</button>
+    <button class="navitem" data-view="orders"><span class="ic">📋</span> Orders <span class="nav-badge" id="ordBadge" style="display:none"></span></button>
     <button class="navitem" data-view="menu"><span class="ic">🍽️</span> Menu</button>
     <button class="navitem" data-view="profile"><span class="ic">🏠</span> Profile</button>
     <button class="navitem" data-view="settings"><span class="ic">⚙️</span> Settings</button>
@@ -232,6 +233,8 @@ or redistribution is strictly prohibited.
       </section>
 
       <!-- ---------- QR ---------- -->
+      <section id="view-orders" class="hidden"><div id="ordBody"></div></section>
+
       <section id="view-guests" class="hidden"><div id="gcBody"></div></section>
 
       <section id="view-qr" class="hidden">
@@ -317,6 +320,7 @@ or redistribution is strictly prohibited.
 
 <script src="config.js"></script>
 <script src="guestcodes.js"></script>
+<script src="adminorders.js"></script>
 <script>
 /* ---------------- version (hardcoded in config.js — same number as the guest menu) ---------------- */
 document.getElementById('devVersion').textContent = CONFIG.APP_VERSION;
@@ -717,10 +721,11 @@ document.querySelectorAll('.navitem[data-view]').forEach(btn=>{
     btn.classList.add('active');
     document.querySelectorAll('[id^="view-"]').forEach(v=>v.classList.add('hidden'));
     document.getElementById('view-' + btn.dataset.view).classList.remove('hidden');
-    document.getElementById('viewTitle').textContent = btn.textContent.trim();
+    { const c = btn.cloneNode(true); c.querySelectorAll('.nav-badge').forEach(x => x.remove()); document.getElementById('viewTitle').textContent = c.textContent.trim(); }
     document.getElementById('sidebar').classList.remove('open');
     if (btn.dataset.view === 'qr') renderQr();
     if (btn.dataset.view === 'guests') gcOpen();
+    if (btn.dataset.view === 'orders') orOpen();
     document.getElementById('saveSettingsTop').style.display = btn.dataset.view === 'settings' ? '' : 'none';
   };
 });
@@ -1301,6 +1306,7 @@ function renderAll(){
   renderProfile();
   renderSettings();
   renderBrand();
+  orStart();                                   // v3.0.13: start watching for new orders (nav badge)
 }
 </script>
 </body>

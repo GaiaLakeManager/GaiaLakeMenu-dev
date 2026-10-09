@@ -1,5 +1,12 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.13 — 9 Oct 2026
+- **Admin → Orders tab.** Lists the orders from the private Orders folder, newest first, and refreshes by itself (every 30 seconds while the tab is open, every minute otherwise). A red number on the **Orders** menu item shows how many are still Pending, and a short message appears when a new order arrives. Each order shows the guest, room, phone, items with dish number, option, dining date and meal, the total, the guest's note, and warnings (marked BB, price differed, received outside kitchen hours). Verified-login orders show the booking basis and the plan-included value that was waived.
+- **Status.** Each order has Pending, Served, Billed and Paid buttons. The change and who made it are saved with the order. Filter by status, or search by name, room, order number, dish or note. "Load older orders" shows earlier ones.
+- **Amended orders** show "Amends GL-…" and the original shows "Later amended by GL-…".
+- **#GLORDER paste box.** When a guest sends an order by WhatsApp, email or SMS, paste the whole message into the box, press Read order, check the items and prices (always taken from the live menu), then Save this order. It is added to the list as Pending. An order already received is refused, so nothing is entered twice. Saving here does not send a Telegram or email alert.
+- Only `admin.html` and the new `adminorders.js` change; `Code.gs` is unchanged (`admin.html`, `adminorders.js`).
+
 ## v3.0.12 — 9 Oct 2026
 - **Group members can browse; one device orders.** After a group's first order, the group code still logs in on other phones, but those phones are view-only: the **+ Add** buttons and the order bar are hidden, and a notice under the header says "Group orders are submitted through one primary device. Feel free to browse here and pass your choices to your group leader." The server still refuses any order from another device. A phone that already had items in its cart is told the same thing when it taps Review order, and the page reloads view-only (`Code.gs`, `login.js`, `orders.js`, `index.html`).
 - The refusal message now says "contact Gaia Lake staff" instead of "reception".
