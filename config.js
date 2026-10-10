@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.13",
-  WHATS_NEW_LATEST: "Admin has a new Orders tab: see orders, change their status and paste orders sent by WhatsApp or email."
+  APP_VERSION: "3.0.14",
+  WHATS_NEW_LATEST: "Admin Orders now flags orders that need a reply, drafts the reply for you, and can archive finished orders."
 };

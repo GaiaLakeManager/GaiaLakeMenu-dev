@@ -1,7 +1,7 @@
-/* Gaia Lake Menu — Admin "Orders" tab (v3.0.13). Loaded by admin.html after guestcodes.js.
+/* Gaia Lake Menu — Admin "Orders" tab (v3.0.14). Loaded by admin.html after guestcodes.js.
    Reads the private Orders folder with the admin's Google sign-in. Order files (GL-XXXXXX.json) are written by Code.gs;
    this tab lists them, refreshes by itself, changes their status (Pending → Served → Billed → Paid) and saves orders pasted from a #GLORDER message. */
-const OR = { map:new Map(), next:'', loaded:false, busy:false, filter:'Pending', q:'', timer:null, tick:0, err:'', fresh:false, paste:null };
+const OR = { map:new Map(), next:'', loaded:false, busy:false, filter:'Pending', q:'', timer:null, tick:0, err:'', fresh:false, paste:null, drafts:{}, open:{}, dirty:false, lastErr:'' };
 const OR_ST = ['Pending', 'Served', 'Billed', 'Paid'];
 const OR_MEAL = { B:'Breakfast', L:'Lunch', D:'Dinner' };
 const orEl = id => document.getElementById(id);
@@ -16,7 +16,8 @@ const orVisible = () => { const v = orEl('view-orders'); return !!v && !v.classL
   st.textContent = `.nav-badge{margin-left:auto;background:#c0392b;color:#fff;border-radius:999px;font-size:.7rem;font-weight:800;padding:1px 7px;min-width:18px;text-align:center}
   .or-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}.or-bar input[type=search]{flex:1 1 180px;min-width:140px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink)}
   .or-chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 12px;font-weight:700;font-size:.8rem;cursor:pointer}.or-chip.on{background:var(--brand-1);border-color:var(--brand-1);color:#fff}
-  .or-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}.or-card.is-new{border-color:var(--brand-1);box-shadow:0 0 0 2px var(--brand-1) inset}
+  .or-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}.or-reply{margin:10px 0;padding:8px 10px;border:1px solid #ffd54f;border-radius:10px;background:#fffdf3;color:#2b2b2b}.or-reply summary{cursor:pointer;font-weight:800;font-size:.86rem}.or-reply textarea{width:100%;box-sizing:border-box;margin-top:8px;font:500 .9rem 'Manrope',sans-serif;padding:8px;border:1px solid #d8d2bd;border-radius:8px}.or-warn{margin-top:8px;padding:6px 10px;border-radius:8px;background:#fbe7e4;color:#a02d20;font-weight:700;font-size:.84rem}
+  mark{background:#ffd54f;color:#1c1c1c;border-radius:3px;padding:0 2px;font-weight:700}mark.m-diet{background:#ffb4a8}.or-clean{background:#fff3cd;color:#4a3b00;border:1px solid #ffd54f;border-radius:14px;padding:12px 14px;margin-bottom:12px}
   .or-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}.or-id{font-weight:800;font-size:1.02rem}
   .or-st{font-size:.76rem;font-weight:800;padding:3px 10px;border-radius:999px;background:#fff3cd;color:#8a6d00}.or-st.Served{background:#dff0ff;color:#175a8c}.or-st.Billed{background:#ece3ff;color:#5b3aa0}.or-st.Paid{background:#e3f3e2;color:#2e7031}
   .or-items{margin:10px 0;padding:0;list-style:none}.or-items li{padding:5px 0;border-top:1px dashed var(--line);font-size:.9rem}.or-items li:first-child{border-top:0}.or-items small{display:block;color:var(--ink-soft)}
@@ -68,44 +69,126 @@ function orStart(){                                                  // called o
   OR.timer = setInterval(() => { OR.tick++; if (document.hidden) return; if (orVisible() || OR.tick % 2 === 0) orRefresh(); }, 30000);
 }
 function orBadge(){
-  const n = [...OR.map.values()].filter(e => (e.rec.status || 'Pending') === 'Pending').length, b = orEl('ordBadge');
+  const n = [...OR.map.values()].filter(e => !e.rec.archived && (e.rec.status || 'Pending') === 'Pending').length, b = orEl('ordBadge');
   if (b){ b.textContent = n; b.style.display = n ? '' : 'none'; }
 }
 
 /* ---------------- list ---------------- */
 function orServe(i){ const m = OR_MEAL[i.meal]; return [orDate(i.date), m ? 'for ' + m : (i.time ? 'at ' + orT12(i.time) : '')].filter(Boolean).join(' · '); }
+
+/* Notes that need a reply from you: dietary / allergy, special time, special preparation. Matched words are highlighted. */
+const OR_DIET = /\b(allerg\w*|intoleran\w*|gluten|coeliac|celiac|lactose|dairy|milk|nuts?|peanuts?|almonds?|cashews?|eggs?|shell\s?fish|prawns?|seafood|fish|soy\w*|sesame|vegan|vegetarian|halal|pork|beef|chill?(?:i|y|ies|is)\w*|spic(?:y|e|es)|mild|onions?|garlic|sugar|salt|diabet\w*|jain|pregnan\w*|baby|toddler|child\w*|no\s+\w+|without\s+\w+|not\s+\w+|less\s+\w+|extra\s+\w+)\b/gi;
+const OR_TIME = /\b(\d{1,2}[:.]\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|early|earlier|late|later|before|after|arriv\w*|check[\s-]?out|midnight|noon|o'?clock|asap|urgent)\b/gi;
+const OR_PREP = /\b(separate\w*|birthday|anniversary|cake|candles?|surprise|celebrat\w*|pack\w*|take\s?away|picnic|deliver\w*|serve\w*|well[\s-]?done|special)\b/gi;
+function orHits(text){
+  const hits = [];
+  [['diet', OR_DIET], ['time', OR_TIME], ['prep', OR_PREP]].forEach(([k, re]) => { for (const m of text.matchAll(re)) hits.push({ s:m.index, e:m.index + m[0].length, k:k }); });
+  hits.sort((a, b) => a.s - b.s || b.e - a.e);
+  const out = []; let end = -1; hits.forEach(h => { if (h.s >= end){ out.push(h); end = h.e; } });
+  return out;
+}
+function orMark(text, hits){ let o = '', p = 0; hits.forEach(h => { o += esc(text.slice(p, h.s)) + `<mark class="m-${h.k}">${esc(text.slice(h.s, h.e))}</mark>`; p = h.e; }); return o + esc(text.slice(p)); }
+function orFlags(r){
+  const f = [], note = String(r.note || ''), hits = note ? orHits(note) : [], k = new Set(hits.map(h => h.k));
+  if (k.has('diet')) f.push({ k:'diet', t:'⚠ Dietary / allergy request' });
+  if (k.has('time')) f.push({ k:'time', t:'⏰ Special time request' });
+  if (k.has('prep')) f.push({ k:'prep', t:'📝 Special preparation request' });
+  if (note.trim() && !k.size) f.push({ k:'note', t:'📝 Guest note' });
+  if (r.via === 'pasted') f.push({ k:'pasted', t:'📋 Pasted by ' + (r.pastedBy || 'admin') + ' — the guest saw no on-screen confirmation' });
+  const big = (r.items || []).find(i => i.qty > 10); if (big) f.push({ k:'qty', t:`🔢 Large quantity (${big.qty}× ${big.name})` });
+  if (r.receivedOutsideHours) f.push({ k:'hours', t:'🕒 Received outside kitchen hours' });
+  if (r.priceAdjusted) f.push({ k:'price', t:'💲 Price differed from the guest screen — menu price used' });
+  return { list:f, hits:hits, note:note };
+}
+const orIsFlagged = r => !r.archived && (r.status || 'Pending') === 'Pending' && orFlags(r).list.length > 0;   // stays flagged until the order is marked Served
+
+function orDraft(r, F){                                              // suggested reply — you edit it, then send it yourself
+  const items = (r.items || []).map(i => `• ${i.qty}× ${i.name}${i.sub ? ' (' + i.sub + ')' : ''} — ${orServe(i).replace(' · for ', ', ').replace(' · at ', ' at ')}`).join('\n');
+  const k = new Set(F.list.map(x => x.k)), q = F.note.trim(); let mid;
+  if (k.has('diet')) mid = `We have noted your request: "${q}".\nWe will check this with our chef and confirm with you shortly.` + (k.has('time') ? '\nWe will also confirm the timing with you.' : '');
+  else if (k.has('time')) mid = `We have noted your request: "${q}".\nWe will confirm the timing with you shortly.`;
+  else if (q) mid = `We have noted your message: "${q}".\nWe will confirm with you shortly.`;
+  else if (k.has('pasted')) mid = 'Your order was sent to us by message and we have entered it into our system.';
+  else mid = 'We will confirm the details with our kitchen and come back to you shortly.';
+  if (k.has('qty') && q) mid += '\nAs this is a large order, we will also confirm the quantities with our kitchen.';
+  return `Hello ${String(r.name || '').trim().split(/\s+/)[0] || 'there'}, thank you for your order ${r.id} at Gaia Lake Kandalama.\n\n${items}\n\n${mid}\n\nThank you,\nGaia Lake Kandalama`;
+}
+function orReplyBox(r, F){
+  const id = esc(r.id), rep = r.reply, txt = OR.drafts[r.id] !== undefined ? OR.drafts[r.id] : orDraft(r, F), open = OR.open[r.id] !== undefined ? OR.open[r.id] : !rep;
+  return `<details class="or-reply" data-id="${id}" ${open ? 'open' : ''}><summary>${rep ? '✔ Replied by ' + esc(rep.by) + ' · ' + esc(orWhen(rep.at)) + ' — tap to open the message again' : '💬 Suggested reply to the guest — edit it, then send'}</summary>
+    ${F.list.some(x => x.k === 'diet') ? '<div class="or-warn">⚠ Dietary / allergy request — confirm with the chef before you reply, before the meal is prepared and before it is served.</div>' : ''}
+    <textarea class="or-draft" data-id="${id}" rows="9">${esc(txt)}</textarea>
+    <div class="btn-row" style="gap:6px;margin-top:6px;"><button class="btn btn-sm btn-primary" data-or="wa" data-id="${id}">WhatsApp guest</button><button class="btn btn-sm" data-or="copy" data-id="${id}">Copy</button>
+      ${rep ? `<button class="btn btn-sm" data-or="unreply" data-id="${id}">Undo “replied”</button>` : `<button class="btn btn-sm" data-or="reply" data-id="${id}">Mark as replied (no message sent)</button>`}</div></details>`;
+}
 function orCard(r, amendedBy){
-  const st = r.status || 'Pending', fl = [], last = (r.history || []).slice(-1)[0];
+  const st = r.status || 'Pending', fl = [], last = (r.history || []).slice(-1)[0], F = orFlags(r), flagged = orIsFlagged(r);
   if (r.verified) fl.push(['✔ Verified login' + (r.basis ? ' · ' + r.basis : '') + (r.bbValue ? ' · plan-included ' + orUsd(r.bbValue) + ' waived' : ''), 'ok']);
   else if (r.planIncluded) fl.push(['⚠ Marked BB — verify the room plan before billing (' + orUsd(r.bbValue) + ' waived)', 'warn']);
-  if (r.via === 'pasted') fl.push(['📋 Pasted by ' + (r.pastedBy || 'admin'), '']);
-  if (r.priceAdjusted) fl.push(['⚠ Price differed from the guest screen — menu price used', 'warn']);
-  if (r.receivedOutsideHours) fl.push(['⚠ Received outside kitchen hours', 'warn']);
+  F.list.forEach(x => fl.push([x.t, 'warn']));
   if (r.amend) fl.push(['✎ Amends ' + r.amend, '']);
   if (amendedBy && amendedBy.length) fl.push(['Later amended by ' + amendedBy.join(', '), '']);
-  return `<div class="or-card${r.__new ? ' is-new' : ''}">
-    <div class="or-head"><div><span class="or-id">${esc(r.id)}</span> <span class="or-st ${esc(st)}">${esc(st)}</span><br>
+  return `<div class="or-card">
+    <div class="or-head"><div><span class="or-id">${esc(r.id)}</span> <span class="or-st ${esc(st)}">${esc(st)}</span>${flagged ? (r.reply ? ' <span class="or-st Paid">Replied ✔</span>' : ' <span class="or-st" style="background:#ffd54f;color:#4a3b00;">Needs reply</span>') : ''}<br>
       <strong>${esc(r.name)}</strong> · ${esc(r.room)} · <a href="tel:${esc(r.phone)}">${esc(r.phone)}</a></div>
       <div style="text-align:right;"><strong>${orUsd(r.total)}</strong><br><span class="hint">Received ${esc(orWhen(r.received))}</span></div></div>
     ${fl.length ? `<div class="or-flags">${fl.map(f => `<span class="or-flag ${f[1]}">${esc(f[0])}</span>`).join('')}</div>` : ''}
     <ul class="or-items">${(r.items || []).map(i => `<li>${i.qty}× <strong>#${String(i.code).padStart(3, '0')}</strong> ${esc(i.name)}${i.sub ? ' – ' + esc(i.sub) : ''}${i.bbWaived ? ' <em>(included in plan)</em>' : ''}<small>${esc(orServe(i))}</small></li>`).join('')}</ul>
-    ${r.note ? `<div class="or-note"><strong>Guest Note:</strong> ${esc(r.note)}</div>` : ''}
-    <div class="or-foot"><div class="btn-row" style="gap:6px;">${OR_ST.map(s => `<button class="btn btn-sm ${s === st ? 'btn-primary' : ''}" data-or="st" data-id="${esc(r.id)}" data-s="${s}" ${s === st ? 'disabled' : ''}>${s}</button>`).join('')}</div>
-      ${last ? `<span class="hint">${esc(last.status)} · ${esc(orWhen(last.at))} · ${esc(last.by || '')}</span>` : ''}</div></div>`;
+    ${F.note ? `<div class="or-note"><strong>Guest Note:</strong> ${orMark(F.note, F.hits)}</div>` : ''}
+    ${flagged ? orReplyBox(r, F) : ''}
+    <div class="or-foot"><div class="btn-row" style="gap:6px;">${OR_ST.map(s => `<button class="btn btn-sm ${s === st ? 'btn-primary' : ''}" data-or="st" data-id="${esc(r.id)}" data-s="${s}" ${s === st ? 'disabled' : ''}>${s}</button>`).join('')}
+        ${r.archived ? `<button class="btn btn-sm" data-or="unarch" data-id="${esc(r.id)}">Restore</button>` : `<button class="btn btn-sm" data-or="arch" data-id="${esc(r.id)}">Archive</button>`}</div>
+      <span class="hint">${r.archived ? 'Archived ' + esc(orWhen(r.archived.at)) + ' · ' : ''}${last ? esc(last.status) + ' · ' + esc(orWhen(last.at)) + ' · ' + esc(last.by || '') : ''}</span></div></div>`;
 }
+const orPaidAt = r => { const h = (r.history || []).filter(x => x.status === 'Paid').pop(); return h ? h.at : ((r.archived || {}).at || ''); };
+const orDue = r => !!r.archived && Date.now() - new Date(orPaidAt(r)).getTime() >= 30 * 864e5 && !(r.keepUntil && new Date(r.keepUntil).getTime() > Date.now());   // archived, paid over a month ago, not snoozed
 function orList_render(){
   const box = orEl('ordList'); if (!box) return;
+  const a = document.activeElement; if (a && a.classList && a.classList.contains('or-draft')){ OR.dirty = true; return; }   // never redraw while you are typing a reply
   const all = [...OR.map.values()].map(e => e.rec).sort((a, b) => String(b.received).localeCompare(String(a.received)));
+  const live = all.filter(r => !r.archived), arch = all.filter(r => r.archived), stOf = r => r.status || 'Pending';
   const by = {}; all.forEach(r => { if (r.amend){ (by[r.amend] = by[r.amend] || []).push(r.id); } });
   const q = OR.q.trim().toLowerCase();
   const hit = r => !q || [r.id, r.name, r.room, r.phone, r.note, ...(r.items || []).map(i => i.name + ' #' + i.code)].join(' ').toLowerCase().includes(q);
-  const cnt = s => all.filter(r => (r.status || 'Pending') === s).length;
-  orEl('ordChips').innerHTML = [...OR_ST, 'All'].map(s => `<button class="or-chip ${OR.filter === s ? 'on' : ''}" data-or="chip" data-s="${s}">${s}${s === 'All' ? '' : ' (' + cnt(s) + ')'}</button>`).join('');
-  const rows = all.filter(r => (OR.filter === 'All' || (r.status || 'Pending') === OR.filter) && hit(r));
+  const cnt = { Flagged:live.filter(orIsFlagged).length, Archived:arch.length }; OR_ST.forEach(s => { cnt[s] = live.filter(r => stOf(r) === s).length; });
+  orEl('ordChips').innerHTML = [...OR_ST.slice(0, 1), 'Flagged', ...OR_ST.slice(1), 'All', 'Archived'].map(s => `<button class="or-chip ${OR.filter === s ? 'on' : ''}" data-or="chip" data-s="${s}">${s === 'Flagged' ? '⚠ Flagged' : s}${cnt[s] !== undefined ? ' (' + cnt[s] + ')' : ''}</button>`).join('');
+  let pool = OR.filter === 'Archived' ? arch : OR.filter === 'All' ? live : OR.filter === 'Flagged' ? live.filter(orIsFlagged) : live.filter(r => stOf(r) === OR.filter);
+  const rows = pool.filter(hit);
+  if (OR.filter === 'Flagged') rows.sort((a, b) => (!!a.reply - !!b.reply) || String(b.received).localeCompare(String(a.received)));   // waiting for your reply first
+  const due = arch.filter(orDue);
   box.innerHTML = (OR.err ? `<div class="or-err">${esc(OR.err)}</div>` : '') +
+    (due.length ? `<div class="or-clean"><strong>🗑 ${due.length} archived order${due.length > 1 ? 's were' : ' was'} paid more than a month ago.</strong> Delete ${due.length > 1 ? 'them' : 'it'}?
+      <div class="btn-row" style="gap:6px;margin:8px 0 4px;"><button class="btn btn-sm" style="background:#c0392b;color:#fff;border-color:#c0392b;" data-or="cleandel">Yes, delete</button><button class="btn btn-sm" data-or="cleankeep">No, keep for now</button><button class="btn btn-sm" data-or="chip" data-s="Archived">View them</button></div>
+      <span class="hint">Deleted orders go to Google Drive's Trash, where they stay for 30 days. “Keep” asks again in a month.</span></div>` : '') +
     (rows.length ? rows.map(r => orCard(r, by[r.id])).join('') : `<div class="panel-box"><p class="hint">${!OR.loaded ? 'Loading orders…' : all.length ? 'No orders match this filter.' : 'No orders yet.'}</p></div>`);
+  const ab = orEl('ordArch'); if (ab){ const can = ['Served', 'Billed', 'Paid'].includes(OR.filter) && rows.length; ab.style.display = can ? '' : 'none'; ab.textContent = `Archive all shown (${rows.length})`; }
   orEl('ordMore').style.display = OR.next ? '' : 'none';
   orEl('ordStamp').textContent = OR.loaded ? 'Updated ' + new Date().toLocaleTimeString('en-GB', { timeZone:'Asia/Colombo', hour:'2-digit', minute:'2-digit' }) + ' · refreshes by itself' : '';
+}
+async function orEdit(id, fn){                                       // read the order file again, change it, save it (never overwrites a newer copy)
+  const e = OR.map.get(id + '.json'); if (!e) throw new Error('Order not found');
+  const rec = await downloadJsonFile(e.fileId); fn(rec); await updateJsonFile(e.fileId, rec); e.rec = rec; e.mod = ''; return rec;
+}
+async function orEach(ids, fn){ const q = ids.slice(); let n = 0; await Promise.all(Array.from({ length:Math.min(4, q.length) }, async () => { while (q.length){ const id = q.shift(); try{ await fn(id); n++; }catch(e){ console.warn(id, e); OR.lastErr = e.message; } } })); return n; }
+async function orReply(id, on){
+  OR.open[id] = !on;
+  try{ await orEdit(id, r => { if (on) r.reply = { at:new Date().toISOString(), by:userEmail }; else delete r.reply; }); orBadge(); orList_render(); }
+  catch(e){ toast('Could not save: ' + e.message); }
+}
+async function orArchive(ids, on){
+  OR.lastErr = ''; const n = await orEach(ids, id => orEdit(id, r => { if (on) r.archived = { at:new Date().toISOString(), by:userEmail }; else { delete r.archived; delete r.keepUntil; } }));
+  toast(n + (on ? ' archived' : ' restored') + (n < ids.length ? ' — some failed: ' + OR.lastErr : '')); orBadge(); orList_render();
+}
+async function orClean(del){
+  const due = [...OR.map.values()].filter(e => orDue(e.rec)); if (!due.length) return;
+  OR.lastErr = '';
+  const n = await orEach(due.map(e => e.rec.id), async id => {
+    const e = OR.map.get(id + '.json');
+    if (del){ await trashFile(e.fileId); OR.map.delete(id + '.json'); }
+    else await orEdit(id, r => { r.keepUntil = new Date(Date.now() + 30 * 864e5).toISOString(); });
+  });
+  toast(del ? n + ' deleted (in Drive Trash for 30 days)' + (n < due.length ? ' — ' + (due.length - n) + ' could not be deleted: ' + OR.lastErr + ' (sign in with the account that owns the orders)' : '') : n + ' kept — I will ask again in a month');
+  orBadge(); orList_render();
 }
 async function orSetStatus(id, s){
   const e = OR.map.get(id + '.json'); if (!e) return;
@@ -199,7 +282,7 @@ function orOpen(){
       <textarea id="ordPaste" rows="5" style="width:100%;box-sizing:border-box;" placeholder="Paste the guest's message here"></textarea>
       <div class="btn-row" style="margin-top:8px;"><button class="btn btn-sm btn-primary" data-or="read">Read order</button><button class="btn btn-sm" data-or="clear">Clear</button></div>
       <div id="ordPastePreview" style="margin-top:12px;"></div></details></div>
-    <div class="or-bar"><span id="ordChips" style="display:contents;"></span><input type="search" id="ordQ" placeholder="Search name, room, order no, dish…"><button class="btn btn-sm" data-or="refresh">⟳ Refresh</button></div>
+    <div class="or-bar"><span id="ordChips" style="display:contents;"></span><input type="search" id="ordQ" placeholder="Search name, room, order no, dish…"><button class="btn btn-sm" data-or="refresh">⟳ Refresh</button><button class="btn btn-sm" id="ordArch" data-or="archall" style="display:none;">Archive all shown</button></div>
     <div class="hint" id="ordStamp" style="margin-bottom:10px;"></div><div id="ordList"></div>
     <div class="btn-row" style="justify-content:center;"><button class="btn btn-sm" id="ordMore" data-or="more" style="display:none;">Load older orders</button></div>`;
     box.addEventListener('click', ev => {
@@ -210,8 +293,22 @@ function orOpen(){
       else if (a === 'more') orMore();
       else if (a === 'read') orRead();
       else if (a === 'save') orSave();
+      else if (a === 'wa'){ const id = b.dataset.id, e = OR.map.get(id + '.json'), ta = box.querySelector('textarea[data-id="' + id + '"]'); if (!e || !ta) return;
+        const num = String(e.rec.phone || '').replace(/\D/g, '').replace(/^00/, ''); window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); orReply(id, true); }
+      else if (a === 'copy'){ const ta = box.querySelector('textarea[data-id="' + b.dataset.id + '"]'); if (ta && navigator.clipboard) navigator.clipboard.writeText(ta.value).then(() => toast('Message copied'), () => toast('Could not copy')); }
+      else if (a === 'reply') orReply(b.dataset.id, true);
+      else if (a === 'unreply') orReply(b.dataset.id, false);
+      else if (a === 'arch'){ const r = (OR.map.get(b.dataset.id + '.json') || {}).rec; if (r && (r.status || 'Pending') !== 'Paid' && !confirm('This order is not marked Paid yet. Archive it anyway?')) return; orArchive([b.dataset.id], true); }
+      else if (a === 'unarch') orArchive([b.dataset.id], false);
+      else if (a === 'archall'){ const ids = [...OR.map.values()].map(e => e.rec).filter(r => !r.archived && (r.status || 'Pending') === OR.filter).map(r => r.id); if (!ids.length) return;
+        if (confirm('Archive all ' + ids.length + ' ' + OR.filter + ' order(s)? They move out of this list into the Archived tab (nothing is deleted).')) orArchive(ids, true); }
+      else if (a === 'cleandel') orClean(true);
+      else if (a === 'cleankeep') orClean(false);
       else if (a === 'clear'){ orEl('ordPaste').value = ''; orEl('ordPastePreview').innerHTML = ''; OR.paste = null; }
     });
+    box.addEventListener('input', ev => { if (ev.target.classList.contains('or-draft')) OR.drafts[ev.target.dataset.id] = ev.target.value; });
+    box.addEventListener('toggle', ev => { if (ev.target.classList && ev.target.classList.contains('or-reply')) OR.open[ev.target.dataset.id] = ev.target.open; }, true);
+    box.addEventListener('focusout', ev => { if (ev.target.classList && ev.target.classList.contains('or-draft')) setTimeout(() => { const a = document.activeElement; if (OR.dirty && !(a && a.classList && a.classList.contains('or-draft'))){ OR.dirty = false; orList_render(); } }, 250); });
     orEl('ordQ').oninput = ev => { OR.q = ev.target.value; orList_render(); };
   }
   orList_render(); orStart(); orRefresh();
