@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest ordering (v3.0.16). Loaded by index.html after the menu script. */
+/* Gaia Lake Menu — guest ordering (v3.0.17). Loaded by index.html after the menu script. */
 let ORDERING = false;
 const menuData = () => window.MENU || {};   // index.html stores the loaded menu in window.MENU
 const OS = { cart:new Map(), amend:null, lastId:null, id:null, f:{}, text:'' };
@@ -269,22 +269,33 @@ $('orderModal').addEventListener('change', e => {
   .ol-th{flex:none;width:48px;height:48px;margin:0;padding:0;border:1px solid var(--line,#e7e0d2);border-radius:8px;overflow:hidden;background:var(--paper,#fff);cursor:zoom-in;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
   .ol-th img{width:100%;height:100%;object-fit:cover;display:block}.ol-th.none{cursor:default;opacity:.55}
   #olBox{position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;cursor:zoom-out}
-  #olBox img{max-width:96vw;max-height:78vh;border-radius:12px;object-fit:contain;background:#222}#olBox .cap{color:#fff;font:600 1.05rem 'Manrope',sans-serif;text-align:center}#olBox .hint{color:#ccc;font:500 .85rem 'Manrope',sans-serif}`;
+  #olBox img{max-width:96vw;max-height:78vh;border-radius:12px;object-fit:contain;background:#222}#olBox .cap{color:#fff;font:600 1.05rem 'Manrope',sans-serif;text-align:center}#olBox .hint{color:#ddd;font:600 1rem 'Manrope',sans-serif}`;
   document.head.appendChild(st);
 })();
 function olThumb(c){
   const d = dishBy(c) || {};
   return d.imageFileId ? `<button type="button" class="ol-th" data-ol-img="${esc(d.imageFileId)}" data-ol-c="${esc(String(c))}" aria-label="Enlarge photo of ${esc(d.name || 'item')}"><img src="${driveImageUrl(d.imageFileId, 160)}" alt="" loading="lazy"></button>` : `<span class="ol-th none" aria-hidden="true">🍽️</span>`;
 }
-$('orderModal').addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('[data-ol-img]'); if (!b) return;
-  const d = dishBy(Number(b.dataset.olC)) || dishBy(b.dataset.olC) || {};
+function olShow(fileId, code, name){                                     // full-screen photo (used by the order page and the menu page)
+  if (document.getElementById('olBox')) return;
   const box = document.createElement('div'); box.id = 'olBox';
-  box.innerHTML = `<img src="${driveImageUrl(b.dataset.olImg, 1200)}" alt="${esc(d.name || '')}"><div class="cap">${d.code ? '#' + String(d.code).padStart(3, '0') + ' ' : ''}${esc(d.name || '')}</div><div class="hint">Tap anywhere to close</div>`;
+  box.innerHTML = `<button type="button" class="x" aria-label="Close">✕ Close</button><img src="${driveImageUrl(fileId, 1200)}" alt="${esc(name || '')}"><div class="cap">${code ? '#' + String(code).padStart(3, '0') + ' ' : ''}${esc(name || '')}</div><div class="hint">Tap anywhere to close</div>`;
   const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = k => { if (k.key === 'Escape') close(); };
   box.onclick = close; document.addEventListener('keydown', onKey); document.body.appendChild(box);
+}
+$('orderModal').addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-ol-img]'); if (!b) return;
+  const d = dishBy(Number(b.dataset.olC)) || dishBy(b.dataset.olC) || {};
+  olShow(b.dataset.olImg, d.code, d.name);
 });
+document.addEventListener('click', e => {                                 // v3.0.17: tap a dish photo on the menu to enlarge it
+  const p = e.target.closest && e.target.closest('[data-enl]'); if (p) olShow(p.dataset.enl, p.dataset.enlC, p.dataset.enlN);
+});
+(function(){ const st = document.createElement('style');
+  st.textContent = `.photo-wrap[data-enl]{cursor:zoom-in}.photo-wrap[data-enl]::after{content:'🔍 Tap to enlarge';position:absolute;bottom:6px;right:6px;font:700 .72rem 'Manrope',sans-serif;padding:4px 9px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;pointer-events:none}
+  #olBox .x{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;background:#fff;color:#111;border:0;border-radius:999px;padding:10px 18px;font:800 1rem 'Manrope',sans-serif;cursor:pointer}`;
+  document.head.appendChild(st); })();
 
 /* v3.0.7 — stop Chrome's pull-to-refresh from reloading the page, and keep the cart on the phone so a reload never loses it. */
 (function(){ const s = document.createElement('style'); s.textContent = 'html,body{overscroll-behavior-y:contain}#orderModal,.o-modal{overscroll-behavior:contain}'; document.head.appendChild(s); })();

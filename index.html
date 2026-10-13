@@ -255,7 +255,7 @@ function renderCard(d){
 
   const code = d.code ? `<span class="item-code">#${String(d.code).padStart(3,'0')}</span>` : '';
   return `<div class="card">
-    <div class="photo-wrap">${img}${tags?`<div class="tag-row">${tags}</div>`:''}${code}</div>
+    <div class="photo-wrap"${d.imageFileId ? ` data-enl="${esc(d.imageFileId)}" data-enl-c="${esc(String(d.code || ''))}" data-enl-n="${esc(d.name)}"` : ''}>${img}${tags?`<div class="tag-row">${tags}</div>`:''}${code}</div>
     <div class="body">
       <div class="row"><span class="name">${esc(d.name)}</span>${priceCell}</div>
       ${d.description?`<div class="desc">${esc(d.description)}</div>`:''}

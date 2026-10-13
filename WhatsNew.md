@@ -1,5 +1,8 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.17 — 14 Oct 2026
+- **Tap a dish photo to enlarge it on the menu page.** Any dish photo opens full screen with the dish number and name, the same view as on the order page. A small "🔍 Tap to enlarge" label on each photo shows it can be tapped. Close it by tapping anywhere, pressing the new **✕ Close** button, or pressing Esc. The close button and the "Tap anywhere to close" text are larger for easier use (`orders.js`, `index.html`).
+
 ## v3.0.16 — 13 Oct 2026
 - **Demo guest.** In Admin → Guest Codes, tick **Demo guest** when adding or editing a guest, and you can type your own easy login code (4 to 8 letters or numbers; real guests always get a random code). A demo guest logs in and orders exactly like a normal guest, and every rule is checked as for a real order, but **nothing is sent**: no Telegram, no email, no file in the Orders folder, no device lock. After pressing Send the guest sees "Demo order ✓ — nothing was sent to the kitchen". A DEMO tag and a short notice show in the signed-in strip, and a DEMO tag shows on the guest card. Unticking Demo gives the guest a new random code (`Code.gs`, `guestcodes.js`, `login.js`, `orders.js`).
 - Upload `Code.gs` to Apps Script and deploy a **New version**.
