@@ -1,5 +1,12 @@
 # Gaia Lake Menu — What's New
 
+## v3.0.16 — 13 Oct 2026
+- **Demo guest.** In Admin → Guest Codes, tick **Demo guest** when adding or editing a guest, and you can type your own easy login code (4 to 8 letters or numbers; real guests always get a random code). A demo guest logs in and orders exactly like a normal guest, and every rule is checked as for a real order, but **nothing is sent**: no Telegram, no email, no file in the Orders folder, no device lock. After pressing Send the guest sees "Demo order ✓ — nothing was sent to the kitchen". A DEMO tag and a short notice show in the signed-in strip, and a DEMO tag shows on the guest card. Unticking Demo gives the guest a new random code (`Code.gs`, `guestcodes.js`, `login.js`, `orders.js`).
+- Upload `Code.gs` to Apps Script and deploy a **New version**.
+
+## v3.0.15 — 12 Oct 2026
+- **Round logo.** The logo in the menu header is now a circle that matches the curved banner behind the restaurant name. The whole logo fits inside the circle (it is no longer cropped), on a white face in both light and dark mode (`style.css`, `index.html`).
+
 ## v3.0.14 — 10 Oct 2026
 - **Flagged orders (Admin → Orders).** An order is flagged when the guest's Note mentions a dietary or allergy request (for example "no chilli", "milk allergy"), a special time, or special preparation; when it has any other Note; when it was pasted from WhatsApp or email; when one item is ordered more than 10 times; or when it was received outside kitchen hours or the price differed from the guest's screen. The matched words in the Note are highlighted. Flagged orders show an amber **Needs reply** badge and are listed under the new **⚠ Flagged** filter, waiting orders first. They stay flagged until you mark the order **Served**.
 - **Suggested reply.** Each flagged order has a ready message to the guest (order number, items, dining dates, and the request you need to confirm). Edit it, then press **WhatsApp guest** (opens WhatsApp to the guest's number, you press send) or **Copy**. Pressing WhatsApp marks the order **Replied ✔** with your name and time; it stays flagged until Served so you can double-check with the kitchen. **Mark as replied** and **Undo "replied"** are there for replies you gave by phone. Allergy and diet requests show a reminder to confirm with the chef first. Your edits are kept while the list refreshes.

@@ -119,7 +119,7 @@ function gcCard(g){
   const h = (g.history || []).slice().reverse();
   return `<div class="panel-box" style="padding:14px 16px;">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
-      <div><strong>${esc(g.name)}</strong> <span class="hint">${esc(g.phone)}</span><br><span class="hint">${where} · ${GC_PLAN[g.basis] || esc(g.basis)} · ${esc(g.checkin || '—')} → ${esc(g.checkout)}</span></div>
+      <div><strong>${esc(g.name)}</strong>${g.demo ? ' <span class="hint" style="font-weight:800;color:#8a6d00;">DEMO</span>' : ''} <span class="hint">${esc(g.phone)}</span><br><span class="hint">${where} · ${GC_PLAN[g.basis] || esc(g.basis)} · ${esc(g.checkin || '—')} → ${esc(g.checkout)}</span></div>
       <div style="text-align:right;"><code style="font-size:1.2rem;letter-spacing:.2em;font-weight:800;">${esc(g.code)}</code><br><span style="font-size:.78rem;font-weight:800;color:${col};">${st}</span>${g.device ? ' <span class="hint">· device locked</span>' : ''}</div></div>
     <div class="btn-row" style="margin-top:10px;flex-wrap:wrap;">
       <button class="btn btn-sm" data-gc="copy" data-id="${g.id}">Copy message</button>
@@ -142,6 +142,8 @@ function gcForm(e){
       <div class="field"><label>Check-out date</label><input type="date" id="gfOut" value="${esc(e.checkout || '')}"></div></div>
     <div class="field-row"><div class="field"><label>Booking basis</label><select id="gfBasis">${Object.keys(GC_PLAN).map(k => `<option value="${k}" ${e.basis === k ? 'selected' : ''}>${k} — ${GC_PLAN[k]}</option>`).join('')}</select></div>
       <div class="field"><label>Booking type</label><select id="gfType"><option value="0" ${e.group ? '' : 'selected'}>Individual</option><option value="1" ${e.group ? 'selected' : ''}>Group</option></select></div></div>
+    <div class="field"><label><input type="checkbox" id="gfDemo" ${e.demo ? 'checked' : ''}> Demo guest <span class="hint">— for showing the menu to management. Orders are checked as normal but are never sent to the kitchen or saved.</span></label></div>
+    <div class="field" id="gfCodeF" style="${e.demo ? '' : 'display:none'}"><label>Login code <span class="hint">(demo guests only — choose 4 to 8 letters or numbers; real guests always get a random code)</span></label><input id="gfCode" maxlength="8" placeholder="e.g. GAIA99" value="${esc(e.demo ? (e.code || '') : '')}" style="text-transform:uppercase"></div>
     <div class="field" id="gfRoomF" style="${e.group ? 'display:none' : ''}"><label>Room / villa</label><input id="gfRoom" list="gfRooms" value="${esc(e.room || '')}"><datalist id="gfRooms">${rooms.map(r => `<option value="${esc(r)}">`).join('')}</datalist></div>
     <div class="field" id="gfGroupF" style="${e.group ? '' : 'display:none'}"><label>Group name</label><input id="gfGroup" placeholder="e.g. Hodgson Group" value="${esc(e.groupLabel || '')}"></div>
     <div class="field"><label>Set meals for this guest <span class="hint">(optional — tick a meal only when the kitchen serves this guest a fixed set meal instead of letting them choose; that category is then hidden from ordering and the guest sees "set menu — no selection needed")</span></label><div id="gfFixed">${gcFixedHtml(e.basis || 'BB', e.fixed)}</div></div>
@@ -151,12 +153,15 @@ function gcForm(e){
 function gcWireForm(){
   const e = GC.edit, err = t => { const x = gcEl('gfErr'); x.textContent = t; x.style.display = t ? 'block' : 'none'; };
   gcEl('gfType').onchange = ev => { gcEl('gfRoomF').style.display = ev.target.value === '1' ? 'none' : ''; gcEl('gfGroupF').style.display = ev.target.value === '1' ? '' : 'none'; };
+  gcEl('gfDemo').onchange = ev => { gcEl('gfCodeF').style.display = ev.target.checked ? '' : 'none'; };
   gcEl('gfBasis').onchange = ev => { gcEl('gfFixed').innerHTML = gcFixedHtml(ev.target.value, []); };
   gcEl('gfCancel').onclick = () => { GC.edit = null; gcRender(); };
   gcEl('gfSave').onclick = async () => {
     const d = { name:gcEl('gfName').value.trim().replace(/\s+/g, ' '), phone:gcPhone(gcEl('gfPhone').value), checkin:gcEl('gfIn').value, checkout:gcEl('gfOut').value,
       basis:gcEl('gfBasis').value, group:gcEl('gfType').value === '1', room:gcEl('gfRoom').value.trim(), groupLabel:gcEl('gfGroup').value.trim() };
     d.fixed = [...document.querySelectorAll('.gfFix:checked')].map(x => x.value);
+    d.demo = gcEl('gfDemo').checked; const custom = d.demo ? gcEl('gfCode').value.trim().toUpperCase() : '';
+    if (custom && !/^[A-Z0-9]{4,8}$/.test(custom)) return err('The demo login code must be 4 to 8 letters or numbers.');
     if (d.name.length < 2 || d.name.length > 60) return err('Please enter the guest name.');
     if (!d.phone) return err('Phone must include the country code, e.g. +94771234567 (8 to 15 digits).');
     if (!d.checkin || !d.checkout) return err('Please set the check-in and check-out dates.');
@@ -167,8 +172,11 @@ function gcWireForm(){
     err(''); gcEl('gfSave').disabled = true;
     let made = '';
     const ok = await gcSave(list => {
-      if (e.id){ const g = list.find(x => x.id === e.id); if (!g) { toast('That guest no longer exists.'); return false; } Object.assign(g, d); gcLog(g, 'edited'); }
-      else { const g = Object.assign({ id:uid(), code:gcCode(gcTaken(list)), created:new Date().toISOString(), revoked:false, history:[] }, d); gcLog(g, 'created'); list.push(g); made = g.code; }
+      if (e.id){ const g = list.find(x => x.id === e.id); if (!g) { toast('That guest no longer exists.'); return false; } const wasDemo = !!g.demo; Object.assign(g, d); gcLog(g, 'edited');
+        if (custom && custom !== String(g.code).toUpperCase()){ if (gcTaken(list).has(custom)){ toast('That login code is already used.'); return false; } const old = g.code; g.code = custom; delete g.device; gcLog(g, 'code changed', { old:old, new:custom }); }
+        else if (wasDemo && !d.demo){ const old = g.code; g.code = gcCode(gcTaken(list)); gcLog(g, 'code changed', { old:old, new:g.code }); } }   // no longer a demo guest: back to a random code
+      else { if (custom && gcTaken(list).has(custom)){ toast('That login code is already used.'); return false; }
+        const g = Object.assign({ id:uid(), code:custom || gcCode(gcTaken(list)), created:new Date().toISOString(), revoked:false, history:[] }, d); gcLog(g, 'created'); list.push(g); made = g.code; }
     }, e.id ? 'Guest updated' : 'Saved');
     if (ok && made) alert('Guest code: ' + made + '\n\nUse "Copy message" or "WhatsApp" on the guest card to send it.'); else if (!ok && gcEl('gfSave')) gcEl('gfSave').disabled = false;
   };

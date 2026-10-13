@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest ordering (v3.0.12). Loaded by index.html after the menu script. */
+/* Gaia Lake Menu — guest ordering (v3.0.16). Loaded by index.html after the menu script. */
 let ORDERING = false;
 const menuData = () => window.MENU || {};   // index.html stores the loaded menu in window.MENU
 const OS = { cart:new Map(), amend:null, lastId:null, id:null, f:{}, text:'' };
@@ -194,7 +194,7 @@ const post = async (o, manual) => {                      // manual = do not foll
 async function send(){
   const o = payload(), b = $('oSend'); b.disabled = true; b.textContent = 'Sending…';
   const slow = setTimeout(() => { if (b.isConnected) b.textContent = 'Still sending — please wait…'; }, 6000);
-  const sent = unconfirmed => { OS.lastId = o.id; OS.id = null; OS.done = true; clearSavedCart(); showDone(o.id, unconfirmed); };
+  const sent = (unconfirmed, demo) => { OS.lastId = o.id; OS.id = null; OS.done = true; clearSavedCart(); showDone(o.id, unconfirmed, demo); };
   let why = '';
   try{
     for (let a = 0; a < 2; a++){                     // read the server's reply (at most twice; safe because the server ignores a repeated order ID)
@@ -202,7 +202,7 @@ async function send(){
       try{ const r = await post(o, false); j = await r.json(); }
       catch(e){ why = e.name === 'AbortError' ? 'no reply received in time' : e.message; console.error('Order send failed:', e); }
       if (j && j.reject){ showForm(j.error); return; }
-      if (j && j.ok){ sent(false); return; }
+      if (j && j.ok){ sent(false, !!j.demo); return; }
       if (!j) break;                                 // reply unreadable: go straight to the confirmation step below
       why = j.error || 'server error';
       if (a < 1){ b.textContent = 'Retrying…'; await new Promise(r => setTimeout(r, 1500)); }
@@ -214,9 +214,11 @@ async function send(){
     showFallback(o, why);
   }finally{ clearTimeout(slow); }
 }
-function showDone(id, unconfirmed){
+function showDone(id, unconfirmed, demo){
   const ph = (menuData().profile || {}).phone || '';
-  $('orderTitle').textContent = 'Order sent ✓';
+  $('orderTitle').textContent = demo ? 'Demo order ✓' : 'Order sent ✓';
+  if (demo){ $('orderBody').innerHTML = `<p><b>Demo order ${id}</b> — everything was checked as for a real order, but nothing was sent to the kitchen.</p>
+    <div class="o-btns"><button class="btn-ghost" id="oAmend">Amend this order</button><button class="btn-main" id="oFinish">Done</button></div>`; return; }
   $('orderBody').innerHTML = `<p>Thank you, your order <b>${id}</b> has reached the kitchen. If anything is wrong, ${ph ? `call us on <a href="tel:${esc(ph.replace(/\s+/g, ''))}">${esc(ph)}</a>` : 'please contact the reception'}.</p>${unconfirmed ? '<p class="hint">The confirmation reply was slow to reach your phone. If you do not hear from us shortly, please call to check.</p>' : ''}
     <div class="o-btns"><button class="btn-ghost" id="oAmend">Amend this order</button><button class="btn-main" id="oFinish">Done</button></div>`;
 }

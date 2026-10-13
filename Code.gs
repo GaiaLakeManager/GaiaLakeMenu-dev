@@ -32,7 +32,7 @@ function doPost(e){
       if (!f || !f.match) return reject('Your login is no longer valid. Please log in again.');
       const st = glState(f.rec); if (st !== 'ok') return reject(st === 'expired' ? 'Your login code has expired.' : 'Your login code is no longer active.');
       G = f.rec;
-      if (G.group){ const did = glDid(o); if (did.length < 8) return reject('Your browser could not be identified. Please turn off private browsing and log in again.'); if (G.device && G.device !== did) return reject(GL_DEVICE); }
+      if (G.group && !G.demo){ const did = glDid(o); if (did.length < 8) return reject('Your browser could not be identified. Please turn off private browsing and log in again.'); if (G.device && G.device !== did) return reject(GL_DEVICE); }
       name = G.name; phone = '+' + glPhone(G.phone); room = G.group ? (G.groupLabel || 'Group') : (G.room || '');
     }
     const nowSL = Utilities.formatDate(new Date(), 'Asia/Colombo', 'HH:mm'), today = Utilities.formatDate(new Date(), 'Asia/Colombo', 'yyyy-MM-dd');
@@ -88,6 +88,7 @@ function doPost(e){
     rec = { id:o.id, amend:o.amend || '', received:new Date().toISOString(), status:'Pending', currency:'USD', name:name, room:room, phone:phone,
       date:o.date || '', meal:String(o.meal || ''), time:o.time || '', note:String(o.note || '').slice(0,300), items:items, total:total, planIncluded:planIncluded, bbValue:bbValue, basis:G ? G.basis : '', verified:!!G,
       priceAdjusted:Math.round(Number(o.total) * 100) !== Math.round(total * 100), via:'web', receivedOutsideHours:outsideHours };
+    if (G && G.demo) return out({ ok:true, id:o.id, demo:true });             // demo guest (for showing management): fully checked like a real order, but nothing is saved, locked or sent
     folder.createFile(o.id + '.json', JSON.stringify(rec), 'application/json');
     if (G && G.group && !G.device){ try{ glLockDevice(P, G, glDid(o)); }catch(e){ Logger.log('Device lock failed: ' + e); } }   // the order is already saved; a lock problem never blocks it
     }finally{ lock.releaseLock(); }                                        // released before the slow email/Telegram calls
@@ -125,7 +126,7 @@ function glLockDevice(P, g, did){                                          // gr
 }
 function glName(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''); }
 function glPhone(s){ return String(s || '').replace(/\D/g, '').replace(/^00/, ''); }
-function glAnswer(g){ return { ok:true, guest:{ name:g.name, phone:g.phone, room:g.room || '', groupLabel:g.groupLabel || '', group:!!g.group, basis:g.basis, checkin:g.checkin || '', checkout:g.checkout, fixed:g.fixed || [], expires:g.checkout + ' ' + GL_CUTOFF } }; }
+function glAnswer(g){ return { ok:true, guest:{ name:g.name, phone:g.phone, room:g.room || '', groupLabel:g.groupLabel || '', group:!!g.group, demo:!!g.demo, basis:g.basis, checkin:g.checkin || '', checkout:g.checkout, fixed:g.fixed || [], expires:g.checkout + ' ' + GL_CUTOFF } }; }
 function glFind(P, code, nm, ph){                                          // -> { rec (code exists), match (all three agree) }
   const id = P.getProperty('GUESTLOGIN_FILE_ID'); if (!id) return null;
   const list = (JSON.parse(DriveApp.getFileById(id).getBlob().getDataAsString()).guests) || [];
@@ -159,7 +160,7 @@ function guestLogin(o, P){
           if (x.stage === 1){ x.stage = 2; x.n = 0; x.until = now + 10 * 60000; msg = 'Too many attempts. Please try again in 10 minutes.'; }   // 3 wrong -> 10 minutes
           else { x.stage = 3; msg = GL_CONTACT; }                                                                                             // 3 more wrong -> stopped
         } });
-        if (st.stage === 3 && found.rec) P.setProperty('gld_' + code, '1');                // a real code that was attacked stays locked until a new code is issued
+        if (st.stage === 3 && found.rec && !found.rec.demo) P.setProperty('gld_' + code, '1');   // demo codes only pause for a few hours, never lock for good                // a real code that was attacked stays locked until a new code is issued
         cache.put(fk, JSON.stringify(st), 21600); if (dv) cache.put(dk, JSON.stringify(dv), 21600);
         const gn = Number(cache.get('glg') || 0) + 1; cache.put('glg', String(gn), 600);
         if (gn >= GL_GLOBAL_MAX){ cache.put('glp', '1', 600); cache.remove('glg'); }       // too many failures overall: everyone pauses 10 minutes
@@ -171,7 +172,7 @@ function guestLogin(o, P){
     if (s === 'expired') return out({ ok:false, reason:'expired', error:'This code has expired (valid until ' + GL_CUTOFF + ' on the check-out date).' });
     if (s === 'revoked') return out({ ok:false, reason:'revoked', error:'This code is no longer active. Please contact reception for a new code.' });
     const ans = glAnswer(found.rec);
-    if (found.rec.group && found.rec.device && glDid(o) !== found.rec.device) ans.guest.viewOnly = true;   // locked group code on another device: may log in and browse, but cannot order
+    if (found.rec.group && !found.rec.demo && found.rec.device && glDid(o) !== found.rec.device) ans.guest.viewOnly = true;   // locked group code on another device: may log in and browse, but cannot order
     return out(ans);
   }finally{ lock.releaseLock(); }
 }
