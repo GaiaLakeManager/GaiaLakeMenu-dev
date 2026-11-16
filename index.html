@@ -68,7 +68,7 @@ or redistribution is strictly prohibited.
 <div class="cart-bar hidden" id="cartBar"><span id="cartSummary"></span><button id="openCart">Review order</button></div>
 <div class="o-back" id="orderModal"><div class="o-modal"><h2 id="orderTitle"></h2><div id="orderBody"></div></div></div>
 
-<div class="dev-footer" id="devFooter">Developed by Prasanna Kurukuladithya (Priya) | Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion">1.2</span> | Copyright © 2026. All rights reserved.</div>
+<div class="dev-footer" id="devFooter">Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion"></span> | Copyright © 2026. All rights reserved. | Design and Developed by PrimTrak.</div>
 
 <script src="config.js"></script>
 <script src="login.js"></script>
@@ -183,7 +183,7 @@ function render(data){
   }
 
 
-  const categories = (data.categories || []).map((c,i)=>({c,i}))
+  const categories = (data.categories || []).filter(c => c.active !== false).map((c,i)=>({c,i}))
     .sort((a,b)=>((a.c.order||0)-(b.c.order||0)) || (a.i-b.i)).map(x=>x.c);   // category order, ties keep saved order
   const dishes = (data.dishes || []).filter(d => d.active !== false);
   const tabsEl = document.getElementById('tabs');

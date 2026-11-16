@@ -4,6 +4,13 @@
 - **My orders (guests).** A new **My orders** button next to Log out shows the guest's own previous orders, one card per meal (Breakfast, Lunch, Dinner or a specific time) sorted by date and time. Each card shows the dishes with small photos, quantities, prices, order number, time placed and the guest's note, and is labelled **Completed** once staff mark it served, otherwise **Pending**. Guests on a group code can all see the group's orders. Only orders placed after this update are listed. Access ends with the login code.
 - **Served per meal (staff).** In Admin → Orders each meal of a Pending order has its own **Mark served** button. The order becomes Served when its last meal is served. The existing Served button still marks every meal at once.
 - **Overdue reminder.** A new **⏰ Overdue** filter (red count) lists Pending meals past their end time, and a Telegram message is sent once per meal, checked every 15 minutes. End times are in **Admin → Settings** (Breakfast 9:00 AM, Lunch 2:30 PM, Dinner 10:00 PM). Orders for a specific time are reminded 60 minutes after it.
+- **Undo served.** A served meal shows an **Undo** button, so a wrongly marked meal can be put back to Pending. Other meals stay served.
+- **Admin → Settings** time fields are now paired: Breakfast starts / ends, Lunch starts / ends, Dinner starts / ends.
+- **My orders** button is now green, and Log out turns red on hover. The guest's note is shown once in a separate **Your notes** box below the meal cards, because it applies to the whole order.
+- **Hide a whole category.** In Admin → Menu each category has a **Hide / Show** button. A hidden category and all its items disappear from the guest menu and cannot be ordered.
+- **My orders totals.** The list ends with the total of all orders, **Paid** labels on paid orders, and the balance still to pay.
+- **Specific-time orders** (for example a snack at 3:00 PM) now have their own setting in Admin → Settings: remind after N minutes (default 60). The reminder check also writes a summary line to the Apps Script log.
+- Page footer now reads "… Design and Developed by PrimTrak." and the version number follows the app version automatically.
 - Upload `Code.gs` and deploy a **New version**, then run `setupOverdueTrigger` once in Apps Script (see SETUP.md).
 
 ## v3.0.18 — 14 Oct 2026

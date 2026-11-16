@@ -7,7 +7,7 @@ const OR_MEAL = { B:'Breakfast', L:'Lunch', D:'Dinner' };
 /* v3.1.0 — one "sitting" = date + meal (B/L/D) or date + requested time; staff mark each sitting served. Mirrors Code.gs. */
 const orSits = r => { const m = {}; (r.items || []).forEach(i => { if (!i.date) return; const k = i.meal === 'T' ? i.date + '|T|' + i.time : i.date + '|' + i.meal; (m[k] = m[k] || { k:k, date:i.date, meal:i.meal, time:i.time }); }); return Object.keys(m).sort().map(k => m[k]); };
 const orSitDone = (r, s) => !!(r.served && r.served[s.k]) || ['Served', 'Billed', 'Paid'].includes(r.status);
-function orSitEnd(s){ const S = state.settings || {}; if (s.meal === 'T'){ const [h, m] = String(s.time).split(':').map(Number), t = Math.min(h * 60 + m + 60, 1439); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }
+function orSitEnd(s){ const S = state.settings || {}; if (s.meal === 'T'){ const [h, m] = String(s.time).split(':').map(Number), t = Math.min(h * 60 + m + (isNaN(parseInt(S.timedGrace, 10)) ? 60 : parseInt(S.timedGrace, 10)), 1439); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }
   return { B:S.breakfastEnd || '09:00', L:S.lunchEnd || '14:30', D:S.dinnerEnd || '22:00' }[s.meal] || '23:59'; }
 function orSitLate(s){ const n = new Date(), d = n.toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' }), t = n.toLocaleTimeString('en-GB', { timeZone:'Asia/Colombo', hour:'2-digit', minute:'2-digit', hour12:false }); return s.date < d || (s.date === d && t >= orSitEnd(s)); }
 const orOverdue = r => !r.archived && (r.status || 'Pending') === 'Pending' && orSits(r).some(s => !orSitDone(r, s) && orSitLate(s));
@@ -144,7 +144,7 @@ function orCard(r, amendedBy){
       <div style="text-align:right;"><strong>${orUsd(r.total)}</strong><br><span class="hint">Received ${esc(orWhen(r.received))}</span></div></div>
     ${fl.length ? `<div class="or-flags">${fl.map(f => `<span class="or-flag ${f[1]}">${esc(f[0])}</span>`).join('')}</div>` : ''}
     <ul class="or-items">${(r.items || []).map(i => `<li>${i.qty}× <strong>#${String(i.code).padStart(3, '0')}</strong> ${esc(i.name)}${i.sub ? ' – ' + esc(i.sub) : ''}${i.bbWaived ? ' <em>(included in plan)</em>' : ''}<small>${esc(orServe(i))}</small></li>`).join('')}</ul>
-    ${st === 'Pending' && !r.archived && orSits(r).length ? `<div class="or-sit">${orSits(r).map(s => { const dn = orSitDone(r, s), late = !dn && orSitLate(s); return `<div><span>${esc(orSitLabel(s))} — ${dn ? '✔ Served' + (r.served && r.served[s.k] ? ' ' + esc(orWhen(r.served[s.k])) : '') : late ? '<span class="or-late">Overdue (ended ' + esc(orT12(orSitEnd(s))) + ')</span>' : 'Pending'}</span>${dn ? '' : `<button class="btn btn-sm" data-or="sit" data-id="${esc(r.id)}" data-k="${esc(s.k)}">Mark served</button>`}</div>`; }).join('')}</div>` : ''}
+    ${(st === 'Pending' || st === 'Served') && !r.archived && orSits(r).length ? `<div class="or-sit">${orSits(r).map(s => { const dn = orSitDone(r, s), late = !dn && orSitLate(s); return `<div><span>${esc(orSitLabel(s))} — ${dn ? '✔ Served' + (r.served && r.served[s.k] ? ' ' + esc(orWhen(r.served[s.k])) : '') : late ? '<span class="or-late">Overdue (ended ' + esc(orT12(orSitEnd(s))) + ')</span>' : 'Pending'}</span>${dn ? `<button class="btn btn-sm" data-or="unsit" data-id="${esc(r.id)}" data-k="${esc(s.k)}">Undo</button>` : `<button class="btn btn-sm" data-or="sit" data-id="${esc(r.id)}" data-k="${esc(s.k)}">Mark served</button>`}</div>`; }).join('')}</div>` : ''}
     ${F.note ? `<div class="or-note"><strong>Guest Note:</strong> ${orMark(F.note, F.hits)}</div>` : ''}
     ${flagged ? orReplyBox(r, F) : ''}
     <div class="or-foot"><div class="btn-row" style="gap:6px;">${OR_ST.map(s => `<button class="btn btn-sm ${s === st ? 'btn-primary' : ''}" data-or="st" data-id="${esc(r.id)}" data-s="${s}" ${s === st ? 'disabled' : ''}>${s}</button>`).join('')}
@@ -223,6 +223,20 @@ async function orSitServed(id, k){                                     // staff 
       if (orSits(rec).every(x => rec.served[x.k]) && (rec.status || 'Pending') === 'Pending'){ rec.status = 'Served'; rec.history.push({ status:'Served', at:at, by:userEmail }); }
     });
     toast(id + ' · meal marked served'); orBadge(); orList_render();
+  }catch(e){ toast('Could not save: ' + e.message); }
+}
+
+async function orSitUndo(id, k){                                       // staff marked the wrong meal: put that meal back to Pending (other meals stay served)
+  try{
+    await orEdit(id, rec => {
+      const at = new Date().toISOString(), s = orSits(rec).find(x => x.k === k); if (!s) throw new Error('Meal not found');
+      if (['Billed', 'Paid'].includes(rec.status)) throw new Error('Order is already ' + rec.status);
+      const wasServed = rec.status === 'Served'; rec.served = rec.served || {};
+      if (wasServed) orSits(rec).forEach(x => { if (x.k !== k && !rec.served[x.k]) rec.served[x.k] = at; });   // only when the whole order was Served: keep the OTHER meals served; a Pending order's other meals are never touched
+      delete rec.served[k]; rec.status = 'Pending';
+      (rec.history = rec.history || []).push({ status:'Undo served ' + orSitLabel(s), at:at, by:userEmail });
+    });
+    toast(id + ' · meal set back to Pending'); orBadge(); orList_render();
   }catch(e){ toast('Could not save: ' + e.message); }
 }
 
@@ -313,6 +327,7 @@ function orOpen(){
       const b = ev.target.closest('[data-or]'); if (!b) return; const a = b.dataset.or;
       if (a === 'st') orSetStatus(b.dataset.id, b.dataset.s);
       else if (a === 'sit') orSitServed(b.dataset.id, b.dataset.k);
+      else if (a === 'unsit') orSitUndo(b.dataset.id, b.dataset.k);
       else if (a === 'chip'){ OR.filter = b.dataset.s; orList_render(); }
       else if (a === 'refresh'){ orRefresh(true); }
       else if (a === 'more') orMore();

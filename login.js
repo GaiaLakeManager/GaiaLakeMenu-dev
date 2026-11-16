@@ -19,6 +19,9 @@ const GL_KEY = 'gl-guest-session';
   .gl-foot{margin-top:16px;text-align:center;font-size:.78rem;color:var(--ink-soft,#5b6b60)}
   .gl-foot a{color:var(--ink,#1c2b22);font-weight:800;text-decoration:underline}
   .gl-bar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:center;margin:10px 0;padding:8px 12px;border-radius:12px;background:var(--paper,#fff);border:1px solid var(--line,#e7e0d2);font-size:.85rem}
+  .gl-bar button{transition:background .15s,color .15s,border-color .15s}
+  .gl-bar #glMy{background:var(--brand-1,#4C9D38);border-color:var(--brand-1,#4C9D38);color:#fff}.gl-bar #glMy:hover{filter:brightness(.88)}
+  .gl-bar #glOut:hover{background:#fbe7e4;border-color:#c0392b;color:#c0392b}
   .mo-back{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 12px 16px}
   .mo-box{width:100%;max-width:520px;background:var(--paper,#fff);color:var(--ink,#1c2b22);border-radius:16px;padding:16px;margin:2vh 0}
   .mo-box h2{font:600 1.2rem 'Fraunces',serif;margin:0 0 4px}.mo-box .mo-x{float:right;width:auto;margin:0;padding:4px 12px;background:none;color:var(--ink-soft,#5b6b60);border:1px solid var(--line,#e7e0d2);border-radius:8px;font:700 .8rem 'Manrope',sans-serif;cursor:pointer}
@@ -132,12 +135,16 @@ async function glMyOrders(){
   sits.sort((a, b) => (a.st.date + (a.st.time || '')).localeCompare(b.st.date + (b.st.time || '')) || (rank[a.st.meal] || 9) - (rank[b.st.meal] || 9));
   const fmtD = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', timeZone:'UTC' });
   const when = iso => iso ? new Date(iso).toLocaleString('en-GB', { timeZone:'Asia/Colombo', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false }) : '';
+  const notes = [...new Set((r.orders || []).map(o => (o.note || '').trim()).filter(Boolean))];   // notes apply to the whole order, so they sit outside the meal cards
+  const notesBlock = notes.length ? '<div class="mo-note" style="margin-top:14px;"><strong>Your notes</strong>' + notes.map(n => `<div style="margin-top:4px;">${esc(n)}</div>`).join('') + '</div>' : '';
+  const tot = (r.orders || []).reduce((s, o) => s + (Number(o.total) || 0), 0), paid = (r.orders || []).reduce((s, o) => s + (o.paid ? Number(o.total) || 0 : 0), 0);
+  const totBlock = `<div class="mo-sit" style="background:var(--cream,#fbf8f1);"><div class="mo-h"><span>Total of all orders</span><span>${money(tot, 'USD')}</span></div>` + (paid > 0 ? `<div class="mo-h" style="margin-top:6px;"><span>Paid</span><span style="color:#2e7031;">− ${money(paid, 'USD')}</span></div>` : '') + `<div class="mo-h" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line,#e7e0d2);font-size:1rem;"><span>${tot - paid > 0.005 ? 'Balance to pay' : 'Nothing to pay'}</span><span>${money(Math.max(0, tot - paid), 'USD')}</span></div></div>`;
   body.className = ''; body.style.margin = '0';
   body.innerHTML = sits.map(x => {
     const st = x.st, label = { B:'Breakfast', L:'Lunch', D:'Dinner' }[st.meal] || ('at ' + to12h(st.time));
-    return `<div class="mo-sit"><div class="mo-h"><span>${esc(fmtD(st.date))} · ${esc(label)}</span><span class="mo-st ${st.done ? 'done' : ''}">${st.done ? 'Completed' : 'Pending'}</span></div>` +
+    return `<div class="mo-sit"><div class="mo-h"><span>${esc(fmtD(st.date))} · ${esc(label)}</span><span><span class="mo-st ${st.done ? 'done' : ''}">${st.done ? 'Completed' : 'Pending'}</span>${x.o.paid ? ' <span class="mo-st done">Paid</span>' : ''}</span></div>` +
       st.items.map(i => { const d = dishes.find(k => Number(k.code) === Number(i.code)), img = d && d.imageFileId ? `<img src="${driveImageUrl(d.imageFileId, 120)}" alt="" loading="lazy">` : '<div class="mo-ph">🍽️</div>';
         return `<div class="mo-ln">${img}<div style="flex:1;min-width:0;"><strong>${esc((d && d.name) || i.name)}</strong>${i.sub ? '<small>' + esc(i.sub) + '</small>' : ''}</div><div style="text-align:right;white-space:nowrap;">${Number(i.qty)} × ${i.bbWaived ? 'included' : money(i.unit, 'USD')}</div></div>`; }).join('') +
-      `<div class="mo-meta">Order ${esc(x.o.id)} · placed ${esc(when(x.o.received))}</div>` + (x.first && x.o.note ? `<div class="mo-note"><strong>Your note:</strong> ${esc(x.o.note)}</div>` : '') + '</div>';
-  }).join('');
+      `<div class="mo-meta">Order ${esc(x.o.id)} · placed ${esc(when(x.o.received))}</div>` + '</div>';
+  }).join('') + notesBlock + totBlock;
 }

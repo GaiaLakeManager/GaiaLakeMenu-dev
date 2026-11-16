@@ -43,12 +43,13 @@ function doPost(e){
     const dt = /^\d{4}-\d{2}-\d{2}$/, tm = /^\d{2}:\d{2}$/;
     const bbCats = new Set((menu.categories || []).filter(c => c.bbIncluded).map(c => c.id));
     const isGroup = G ? !!G.group : (S.groupLabels || []).some(g => String(g).trim().toLowerCase() === room.toLowerCase()), sitting = {}, MNAME = { B:'Breakfast', L:'Lunch', D:'Dinner' };   // group orders: one item per Breakfast/Lunch/Dinner sitting
+    const hiddenCat = {}; (menu.categories || []).forEach(k => { if (k.active === false) hiddenCat[k.id] = 1; });   // v3.1.0: a hidden category's items cannot be ordered
     const catMeal = {}; (menu.categories || []).forEach(c => { const m = (c.meal !== undefined ? c.meal : (c.bfOnly !== undefined ? (c.bfOnly ? 'B' : '') : (c.bbIncluded ? 'B' : ''))); if (m) catMeal[c.id] = m; });   // category -> fixed meal (B/L/D)
     const planIncluded = G ? (GL_PLAN[G.basis] || []).length > 0 : !!o.planIncluded;   // Room Only: nothing included
     let total = 0, bbValue = 0;                                            // all amounts are USD
     const items = [];
     for (const it of o.items){                                             // prices always come from the live menu, never from the guest's device
-      const d = (menu.dishes || []).find(x => x.active !== false && Number(x.code) === Number(it.c));
+      const d = (menu.dishes || []).find(x => x.active !== false && !hiddenCat[x.categoryId] && Number(x.code) === Number(it.c));
       if (!d) return reject('An item is no longer on the menu (#' + it.c + ').');
       const sub = it.s ? (d.subOptions || []).find(x => x.name === it.s) : null;
       if ((d.subOptions || []).length && !sub) return reject('Please choose an option for ' + d.name + '.');
@@ -203,7 +204,7 @@ function ordSittings(r){                                                   // on
 }
 const ordDone = (r, s) => !!(r.served && r.served[s.k]) || ['Served', 'Billed', 'Paid'].indexOf(r.status) >= 0;
 function ordEnd(S, s){                                                     // time after which a Pending sitting is overdue
-  if (s.meal === 'T'){ const p = String(s.time).split(':').map(Number), t = Math.min(p[0] * 60 + p[1] + 60, 1439); return ('0' + Math.floor(t / 60)).slice(-2) + ':' + ('0' + t % 60).slice(-2); }
+  if (s.meal === 'T'){ const p = String(s.time).split(':').map(Number), t = Math.min(p[0] * 60 + p[1] + (isNaN(parseInt(S.timedGrace, 10)) ? 60 : parseInt(S.timedGrace, 10)), 1439); return ('0' + Math.floor(t / 60)).slice(-2) + ':' + ('0' + t % 60).slice(-2); }
   return S[{ B:'breakfastEnd', L:'lunchEnd', D:'dinnerEnd' }[s.meal]] || OD_END[s.meal];
 }
 function myOrders(o, P){                                                   // re-verifies name + phone + code, then returns only this guest's own orders (guest-visible fields only)
@@ -227,7 +228,7 @@ function myOrders(o, P){                                                   // re
   const folder = DriveApp.getFolderById(P.getProperty('ORDERS_FOLDER_ID')), recs = [];
   (rec.orders || []).slice(-30).forEach(id => { try{ const it = folder.getFilesByName(id + '.json'); if (it.hasNext()) recs.push(JSON.parse(it.next().getBlob().getDataAsString())); }catch(e){} });
   const replaced = {}; recs.forEach(r => { if (r.amend) replaced[r.amend] = 1; });   // an amended order is shown only as its latest version
-  const orders = recs.filter(r => !replaced[r.id]).map(r => ({ id:r.id, received:r.received, note:r.note || '', total:r.total, bbValue:r.bbValue || 0,
+  const orders = recs.filter(r => !replaced[r.id]).map(r => ({ id:r.id, received:r.received, note:r.note || '', total:Number(r.total) || 0, paid:r.status === 'Paid',
     sittings:ordSittings(r).map(s => ({ date:s.date, meal:s.meal, time:s.time, done:ordDone(r, s),
       items:s.items.map(i => ({ code:i.code, name:i.name, sub:i.sub || '', qty:i.qty, unit:i.unit, bbWaived:!!i.bbWaived })) })) }));
   return out({ ok:true, orders:orders });
@@ -240,14 +241,17 @@ function checkOverdue(){
   const oldest = Utilities.formatDate(new Date(now.getTime() - 4 * 864e5), 'Asia/Colombo', 'yyyy-MM-dd');
   const since = Utilities.formatDate(new Date(now.getTime() - 45 * 864e5), 'UTC', "yyyy-MM-dd'T'00:00:00");
   const sent = JSON.parse(P.getProperty('OD_SENT') || '[]'), groups = {};
-  const files = DriveApp.getFolderById(P.getProperty('ORDERS_FOLDER_ID')).searchFiles("createdDate > '" + since + "'");
+  const ofolder = DriveApp.getFolderById(P.getProperty('ORDERS_FOLDER_ID')); let files;
+  try{ files = ofolder.searchFiles("modifiedDate > '" + since + "'"); files.hasNext(); }catch(e){ Logger.log('Date search failed (' + e + ') — reading every order instead'); files = ofolder.getFiles(); }
+  let scanned = 0, pend = 0, already = 0;
   while (files.hasNext()){
     let r; try{ r = JSON.parse(files.next().getBlob().getDataAsString()); }catch(e){ continue; }
-    if (!r || !r.id || r.archived || (r.status || 'Pending') !== 'Pending') continue;
+    scanned++; if (!r || !r.id || r.archived || (r.status || 'Pending') !== 'Pending') continue; pend++;
+    Logger.log('  Pending ' + r.id + ': ' + (ordSittings(r).map(s => s.k + (ordDone(r, s) ? ' (served)' : '') + ' ends ' + ordEnd(S, s)).join('; ') || 'NO dated meals — nothing to remind'));
     ordSittings(r).forEach(s => {
       if (ordDone(r, s) || s.date < oldest) return;
       const end = ordEnd(S, s), late = s.date < today || (s.date === today && nowT >= end), key = r.id + '|' + s.k;
-      if (!late || sent.indexOf(key) >= 0) return;
+      if (!late) return; if (sent.indexOf(key) >= 0){ already++; return; }
       const gk = s.meal === 'T' ? s.date + '|T|' + s.time : s.date + '|' + s.meal;
       (groups[gk] = groups[gk] || { s:s, end:end, list:[] }).list.push({ key:key, line:r.id + ' · ' + r.room + ' · ' + r.name });
     });
@@ -258,6 +262,7 @@ function checkOverdue(){
     g.list.forEach(x => sent.push(x.key));
   });
   P.setProperty('OD_SENT', JSON.stringify(sent.slice(-500)));
+  Logger.log('Overdue check ' + today + ' ' + nowT + ': ' + scanned + ' orders read, ' + pend + ' Pending, ' + Object.keys(groups).length + ' reminder message(s) sent, ' + already + ' already reported earlier.');
 }
 function setupOverdueTrigger(){                                            // ONE-TIME: run once from the Apps Script editor and approve the permission
   ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === 'checkOverdue') ScriptApp.deleteTrigger(t); });

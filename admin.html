@@ -53,7 +53,7 @@ or redistribution is strictly prohibited.
     <button class="navitem" data-view="guests"><span class="ic">🔑</span> Guest Codes</button>
     <button class="navitem" data-view="qr"><span class="ic">🔗</span> QR Code</button>
     <button class="navitem nav-signout" id="signOutBtn"><span class="ic">↩</span> Sign Out</button>
-    <div class="dev-footer">Developed by Prasanna Kurukuladithya (Priya) | Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion"></span> | Copyright © 2026. All rights reserved.</div>
+    <div class="dev-footer">Gaia Lake Kandalama - Sri Lanka | v<span id="devVersion"></span> | Copyright © 2026. All rights reserved. | Design and Developed by PrimTrak.</div>
   </aside>
 
   <div class="main">
@@ -155,18 +155,21 @@ or redistribution is strictly prohibited.
             <div class="field"><label>Latest dining time guests can pick</label><input type="time" id="lastDining"></div>
           </div>
           <div class="field-row">
-            <div class="field"><label>Daily Breakfast serving time</label><input type="time" id="mealBreakfast"></div>
-            <div class="field"><label>Lunch serving time</label><input type="time" id="mealLunch"></div>
-          </div>
-          <div class="field-row">
-            <div class="field"><label>Dinner serving time</label><input type="time" id="mealDinner"></div>
+            <div class="field"><label>Breakfast starts (serving time)</label><input type="time" id="mealBreakfast"></div>
             <div class="field"><label>Breakfast ends (staff reminder)</label><input type="time" id="endBreakfast"></div>
           </div>
           <div class="field-row">
+            <div class="field"><label>Lunch starts (serving time)</label><input type="time" id="mealLunch"></div>
             <div class="field"><label>Lunch ends (staff reminder)</label><input type="time" id="endLunch"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Dinner starts (serving time)</label><input type="time" id="mealDinner"></div>
             <div class="field"><label>Dinner ends (staff reminder)</label><input type="time" id="endDinner"></div>
           </div>
-          <p class="hint" style="margin:0 0 12px;">If a meal is still Pending after its end time, staff get a Telegram reminder and the order shows as Overdue. Orders for a specific time are reminded 60 minutes after that time.</p>
+          <div class="field-row">
+            <div class="field"><label>Specific-time orders: remind after (minutes)</label><input type="number" id="graceMin" min="0" max="600" step="5"></div>
+          </div>
+          <p class="hint" style="margin:0 0 12px;">If a meal is still Pending after its end time, staff get a Telegram reminder and the order shows as Overdue. Orders for a specific time (for example a snack at 3:00 PM) are reminded that many minutes after the requested time. The check runs every 15 minutes.</p>
           <div style="display:flex;align-items:center;gap:12px;margin:4px 0 12px;">
             <label class="switch"><input type="checkbox" id="perItemToggle"><span class="slider"></span></label>
             <span class="hint"><b>Date for each item.</b> When on, every item in the order window has its own "Please select date" picker. When off, the guest picks one date for the whole order. Guests always see just one of the two.</span>
@@ -789,15 +792,16 @@ function renderCategories(){
   state.categories.forEach((cat,i)=>{
     const count = state.dishes.filter(d=>d.categoryId===cat.id).length;
     const row = document.createElement('div');
-    row.className = 'cat-row';
+    row.className = 'cat-row'; if (cat.active === false) row.style.opacity = '.6';
     row.innerHTML = `
       <span class="icon-in">${cat.icon||'🍽️'}</span>
       <span class="name">${cat.name}${cat.bbIncluded ? ' <span class="tag" style="font-size:.65rem;">BB</span>' : ''}${(() => { const m = (cat.meal !== undefined ? cat.meal : (cat.bfOnly !== undefined ? (cat.bfOnly ? 'B' : '') : (cat.bbIncluded ? 'B' : ''))); return m ? ' <span class="tag" style="font-size:.65rem;">' + ({B:'Breakfast',L:'Lunch',D:'Dinner'}[m]) + ' only</span>' : ''; })()}</span>
-      <span class="count">${count} item${count===1?'':'s'}</span>
+      <span class="count">${count} item${count===1?'':'s'}${cat.active === false ? ' · <strong style="color:#c0392b;">Hidden</strong>' : ''}</span>
       <div class="order-btns">
         <button ${i===0?'disabled':''} data-dir="-1">▲</button>
         <button ${i===state.categories.length-1?'disabled':''} data-dir="1">▼</button>
       </div>
+      <button class="btn btn-sm" data-hide title="Hide or show this whole category and all its items on the guest menu">${cat.active === false ? 'Show' : 'Hide'}</button>
       <button class="btn btn-sm" data-edit>Edit</button>`;
     row.querySelectorAll('[data-dir]').forEach(b=>{
       b.onclick = async () => {
@@ -809,6 +813,7 @@ function renderCategories(){
         renderCategories(); renderDishSection(); await persist(false);
       };
     });
+    row.querySelector('[data-hide]').onclick = async () => { if (cat.active === false) delete cat.active; else cat.active = false; renderCategories(); renderDishSection(); await persist(); toast(cat.active === false ? cat.name + ' is hidden from guests' : cat.name + ' is visible again'); };
     row.querySelector('[data-edit]').onclick = () => openCatModal(cat);
     list.appendChild(row);
   });
@@ -1089,6 +1094,7 @@ function renderSettings(){
   document.getElementById('endBreakfast').value = state.settings.breakfastEnd || '09:00';
   document.getElementById('endLunch').value = state.settings.lunchEnd || '14:30';
   document.getElementById('endDinner').value = state.settings.dinnerEnd || '22:00';
+  document.getElementById('graceMin').value = Number.isFinite(parseInt(state.settings.timedGrace, 10)) ? parseInt(state.settings.timedGrace, 10) : 60;
   document.getElementById('perItemToggle').checked = state.settings.perItemWhen !== false;
   document.getElementById('ordEmail').value = (state.settings.orders||{}).email || '';
   document.getElementById('ordWhatsapp').value = (state.settings.orders||{}).whatsapp || '';
@@ -1172,6 +1178,7 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
   state.settings.breakfastEnd = document.getElementById('endBreakfast').value || '09:00';
   state.settings.lunchEnd = document.getElementById('endLunch').value || '14:30';
   state.settings.dinnerEnd = document.getElementById('endDinner').value || '22:00';
+  { const gm = parseInt(document.getElementById('graceMin').value, 10); state.settings.timedGrace = Number.isFinite(gm) ? Math.max(0, Math.min(600, gm)) : 60; }
   delete state.settings.askDiningTime;                                  // retired: guests are always asked for a date
   state.settings.perItemWhen = document.getElementById('perItemToggle').checked;
   state.settings.orders = { email: document.getElementById('ordEmail').value.trim(), whatsapp: document.getElementById('ordWhatsapp').value.trim() };
