@@ -157,3 +157,10 @@ Sign in to Google as the orders account (gaialakewebapps@gmail.com) for steps 1 
 7. Test with a real order from a phone. When you later change `Code.gs`, use Deploy > Manage deployments > Edit > New version so the URL stays the same.
 
 Ordering buttons appear only when `ORDER_SCRIPT_URL` is filled in and Accepting Orders is on.
+
+## Overdue meal reminder (v3.1.0) — one-time setup
+
+1. Paste the new `Code.gs` into Apps Script, then Deploy > Manage deployments > Edit > **New version**.
+2. In the editor choose the function `setupOverdueTrigger` and press **Run**. Approve the permission when asked. This creates a trigger that runs `checkOverdue` every 15 minutes (Triggers page, clock icon, shows it).
+3. Admin → Settings: check the **Breakfast / Lunch / Dinner ends** times and Save.
+4. Reminders arrive on Telegram, once per meal. Guests' **My orders** needs no setup; only orders placed after this version are linked to a guest.

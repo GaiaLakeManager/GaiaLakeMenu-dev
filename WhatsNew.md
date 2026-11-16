@@ -1,5 +1,14 @@
 # Gaia Lake Menu — What's New
 
+## v3.1.0 — 16 Nov 2026
+- **My orders (guests).** A new **My orders** button next to Log out shows the guest's own previous orders, one card per meal (Breakfast, Lunch, Dinner or a specific time) sorted by date and time. Each card shows the dishes with small photos, quantities, prices, order number, time placed and the guest's note, and is labelled **Completed** once staff mark it served, otherwise **Pending**. Guests on a group code can all see the group's orders. Only orders placed after this update are listed. Access ends with the login code.
+- **Served per meal (staff).** In Admin → Orders each meal of a Pending order has its own **Mark served** button. The order becomes Served when its last meal is served. The existing Served button still marks every meal at once.
+- **Overdue reminder.** A new **⏰ Overdue** filter (red count) lists Pending meals past their end time, and a Telegram message is sent once per meal, checked every 15 minutes. End times are in **Admin → Settings** (Breakfast 9:00 AM, Lunch 2:30 PM, Dinner 10:00 PM). Orders for a specific time are reminded 60 minutes after it.
+- Upload `Code.gs` and deploy a **New version**, then run `setupOverdueTrigger` once in Apps Script (see SETUP.md).
+
+## v3.0.18 — 14 Oct 2026
+- **R1 live.** The "R1 preview" label and the search-engine block are removed, so the menu now looks and behaves as the live site. Guest login is controlled only by **Admin → Guest Codes → Require guest login** (keep it **On**); the old fixed login line in `config.js` is switched off so the page and the kitchen server always agree. Only `config.js` changes.
+
 ## v3.0.17 — 14 Oct 2026
 - **Tap a dish photo to enlarge it on the menu page.** Any dish photo opens full screen with the dish number and name, the same view as on the order page. A small "🔍 Tap to enlarge" label on each photo shows it can be tapped. Close it by tapping anywhere, pressing the new **✕ Close** button, or pressing Esc. The close button and the "Tap anywhere to close" text are larger for easier use (`orders.js`, `index.html`).
 

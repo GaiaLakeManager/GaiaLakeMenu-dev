@@ -69,6 +69,6 @@ const CONFIG = {
 
   // --- App version & What's New (Claude updates these two lines on every release —
   // admin no longer needs to type a version number anywhere) -----------------
-  APP_VERSION: "3.0.17",
-  WHATS_NEW_LATEST: "Tap a dish photo on the menu to see it full screen."
+  APP_VERSION: "3.1.0",
+WHATS_NEW_LATEST: "Guests can now see their own previous orders (My orders). Staff can mark each meal served and get an overdue reminder."
 };

@@ -1,4 +1,4 @@
-/* Gaia Lake Menu — guest login (v3.0.16). Loaded by index.html after config.js.
+/* Gaia Lake Menu — guest login (v3.1.0). Loaded by index.html after config.js.
    Verification happens in Apps Script against a private file; this page only sends name + phone + code. */
 let GUEST = null;                                   // verified guest details (name, phone, room, basis, checkin, checkout, fixed …)
 const GL_KEY = 'gl-guest-session';
@@ -19,6 +19,13 @@ const GL_KEY = 'gl-guest-session';
   .gl-foot{margin-top:16px;text-align:center;font-size:.78rem;color:var(--ink-soft,#5b6b60)}
   .gl-foot a{color:var(--ink,#1c2b22);font-weight:800;text-decoration:underline}
   .gl-bar{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:center;margin:10px 0;padding:8px 12px;border-radius:12px;background:var(--paper,#fff);border:1px solid var(--line,#e7e0d2);font-size:.85rem}
+  .mo-back{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 12px 16px}
+  .mo-box{width:100%;max-width:520px;background:var(--paper,#fff);color:var(--ink,#1c2b22);border-radius:16px;padding:16px;margin:2vh 0}
+  .mo-box h2{font:600 1.2rem 'Fraunces',serif;margin:0 0 4px}.mo-box .mo-x{float:right;width:auto;margin:0;padding:4px 12px;background:none;color:var(--ink-soft,#5b6b60);border:1px solid var(--line,#e7e0d2);border-radius:8px;font:700 .8rem 'Manrope',sans-serif;cursor:pointer}
+  .mo-sit{border:1px solid var(--line,#e7e0d2);border-radius:12px;padding:10px 12px;margin-top:10px}.mo-h{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:800;font-size:.9rem}
+  .mo-st{font-size:.72rem;font-weight:800;padding:2px 9px;border-radius:999px;background:#fff3cd;color:#8a6d00;white-space:nowrap}.mo-st.done{background:#e3f3e2;color:#2e7031}
+  .mo-ln{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px dashed var(--line,#e7e0d2);font-size:.86rem}.mo-ln:first-of-type{border-top:0}.mo-ln img,.mo-ln .mo-ph{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none;background:var(--line,#e7e0d2);display:flex;align-items:center;justify-content:center}
+  .mo-ln small{display:block;color:var(--ink-soft,#5b6b60)}.mo-meta{font-size:.76rem;color:var(--ink-soft,#5b6b60);margin-top:6px}.mo-note{margin-top:6px;padding:6px 9px;border-radius:8px;background:#fff8e1;color:#4a3b00;font-size:.82rem}
   .gl-bar button{font:700 .78rem 'Manrope',sans-serif;background:none;border:1px solid var(--line,#e7e0d2);border-radius:8px;padding:4px 10px;color:var(--ink-soft,#5b6b60);cursor:pointer}`;
   document.head.appendChild(st);
 })();
@@ -45,8 +52,9 @@ function glBar(){                                   // small "signed in" strip u
   const plan = { RO:'Room Only', BB:'Bed & Breakfast', HB:'Half Board', FB:'Full Board' }[GUEST.basis] || '';
   const where = GUEST.group ? (GUEST.groupLabel || 'Group') : (GUEST.room || '');
   const d = document.createElement('div'); d.className = 'gl-bar'; d.id = 'glBar';
-  d.innerHTML = `<span>👤 <strong>${esc(GUEST.name)}</strong>${GUEST.demo ? ' <span class="tag" style="background:#ffd54f;color:#4a3b00;">DEMO</span>' : ''}${where ? ' · ' + esc(where) : ''}${plan ? ' · ' + plan : ''}</span><button type="button" id="glOut">Log out</button>${GUEST.demo ? '<span style="flex-basis:100%;text-align:center;font-weight:600;">Demo guest — you can try everything, but orders are not sent to the kitchen.</span>' : ''}${GUEST.viewOnly ? '<span style="flex-basis:100%;text-align:center;font-weight:600;">Group orders are submitted through one primary device. Feel free to browse here and pass your choices to your group leader.</span>' : ''}`;
+  d.innerHTML = `<span>👤 <strong>${esc(GUEST.name)}</strong>${GUEST.demo ? ' <span class="tag" style="background:#ffd54f;color:#4a3b00;">DEMO</span>' : ''}${where ? ' · ' + esc(where) : ''}${plan ? ' · ' + plan : ''}</span><button type="button" id="glMy">My orders</button><button type="button" id="glOut">Log out</button>${GUEST.demo ? '<span style="flex-basis:100%;text-align:center;font-weight:600;">Demo guest — you can try everything, but orders are not sent to the kitchen.</span>' : ''}${GUEST.viewOnly ? '<span style="flex-basis:100%;text-align:center;font-weight:600;">Group orders are submitted through one primary device. Feel free to browse here and pass your choices to your group leader.</span>' : ''}`;
   const title = document.querySelector('.menu-title'); if (title && title.parentNode) title.parentNode.insertBefore(d, title);
+  document.getElementById('glMy').onclick = glMyOrders;
   document.getElementById('glOut').onclick = () => { glClear(); location.reload(); };
 }
 
@@ -107,3 +115,29 @@ function glCatView(cat){                           // how one menu category look
 }
 
 const glPreCheckin = () => !!GUEST && GUEST.checkin > new Date().toLocaleDateString('en-CA', { timeZone:'Asia/Colombo' });   // logged in, but check-in date is still ahead
+
+/* ---- v3.1.0 My orders: the guest's own previous orders, one card per meal (sitting) ---- */
+async function glMyOrders(){
+  const back = document.createElement('div'); back.className = 'mo-back';
+  back.innerHTML = '<div class="mo-box"><button type="button" class="mo-x" id="moX">Close</button><h2>My orders</h2><div id="moBody" class="gl-sub" style="margin:12px 0;color:var(--ink-soft,#5b6b60)">Loading…</div></div>';
+  document.body.appendChild(back);
+  const close = () => back.remove(); document.getElementById('moX').onclick = close; back.onclick = ev => { if (ev.target === back) close(); };
+  const body = document.getElementById('moBody'), s = glSaved();
+  if (!s){ body.textContent = 'Please log in again to see your orders.'; return; }
+  const r = await glCall('myorders', s);
+  if (!r.ok){ body.textContent = r.error || 'Could not load your orders.'; return; }
+  const rank = { B:1, L:2, D:3 }, dishes = (window.MENU || {}).dishes || [], sits = [];
+  (r.orders || []).forEach(o => (o.sittings || []).forEach((st, i) => sits.push({ o:o, st:st, first:i === 0 })));
+  if (!sits.length){ body.textContent = GUEST && GUEST.demo ? 'Demo guest — orders are not saved.' : 'You have no orders yet.'; return; }
+  sits.sort((a, b) => (a.st.date + (a.st.time || '')).localeCompare(b.st.date + (b.st.time || '')) || (rank[a.st.meal] || 9) - (rank[b.st.meal] || 9));
+  const fmtD = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', timeZone:'UTC' });
+  const when = iso => iso ? new Date(iso).toLocaleString('en-GB', { timeZone:'Asia/Colombo', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false }) : '';
+  body.className = ''; body.style.margin = '0';
+  body.innerHTML = sits.map(x => {
+    const st = x.st, label = { B:'Breakfast', L:'Lunch', D:'Dinner' }[st.meal] || ('at ' + to12h(st.time));
+    return `<div class="mo-sit"><div class="mo-h"><span>${esc(fmtD(st.date))} · ${esc(label)}</span><span class="mo-st ${st.done ? 'done' : ''}">${st.done ? 'Completed' : 'Pending'}</span></div>` +
+      st.items.map(i => { const d = dishes.find(k => Number(k.code) === Number(i.code)), img = d && d.imageFileId ? `<img src="${driveImageUrl(d.imageFileId, 120)}" alt="" loading="lazy">` : '<div class="mo-ph">🍽️</div>';
+        return `<div class="mo-ln">${img}<div style="flex:1;min-width:0;"><strong>${esc((d && d.name) || i.name)}</strong>${i.sub ? '<small>' + esc(i.sub) + '</small>' : ''}</div><div style="text-align:right;white-space:nowrap;">${Number(i.qty)} × ${i.bbWaived ? 'included' : money(i.unit, 'USD')}</div></div>`; }).join('') +
+      `<div class="mo-meta">Order ${esc(x.o.id)} · placed ${esc(when(x.o.received))}</div>` + (x.first && x.o.note ? `<div class="mo-note"><strong>Your note:</strong> ${esc(x.o.note)}</div>` : '') + '</div>';
+  }).join('');
+}

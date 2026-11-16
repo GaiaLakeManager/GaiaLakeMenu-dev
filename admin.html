@@ -160,7 +160,13 @@ or redistribution is strictly prohibited.
           </div>
           <div class="field-row">
             <div class="field"><label>Dinner serving time</label><input type="time" id="mealDinner"></div>
+            <div class="field"><label>Breakfast ends (staff reminder)</label><input type="time" id="endBreakfast"></div>
           </div>
+          <div class="field-row">
+            <div class="field"><label>Lunch ends (staff reminder)</label><input type="time" id="endLunch"></div>
+            <div class="field"><label>Dinner ends (staff reminder)</label><input type="time" id="endDinner"></div>
+          </div>
+          <p class="hint" style="margin:0 0 12px;">If a meal is still Pending after its end time, staff get a Telegram reminder and the order shows as Overdue. Orders for a specific time are reminded 60 minutes after that time.</p>
           <div style="display:flex;align-items:center;gap:12px;margin:4px 0 12px;">
             <label class="switch"><input type="checkbox" id="perItemToggle"><span class="slider"></span></label>
             <span class="hint"><b>Date for each item.</b> When on, every item in the order window has its own "Please select date" picker. When off, the guest picks one date for the whole order. Guests always see just one of the two.</span>
@@ -1080,6 +1086,9 @@ function renderSettings(){
   document.getElementById('mealBreakfast').value = state.settings.breakfastTime || '07:30';
   document.getElementById('mealLunch').value = state.settings.lunchTime || '12:30';
   document.getElementById('mealDinner').value = state.settings.dinnerTime || '19:30';
+  document.getElementById('endBreakfast').value = state.settings.breakfastEnd || '09:00';
+  document.getElementById('endLunch').value = state.settings.lunchEnd || '14:30';
+  document.getElementById('endDinner').value = state.settings.dinnerEnd || '22:00';
   document.getElementById('perItemToggle').checked = state.settings.perItemWhen !== false;
   document.getElementById('ordEmail').value = (state.settings.orders||{}).email || '';
   document.getElementById('ordWhatsapp').value = (state.settings.orders||{}).whatsapp || '';
@@ -1160,6 +1169,9 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
   state.settings.breakfastTime = document.getElementById('mealBreakfast').value || '07:30';
   state.settings.lunchTime = document.getElementById('mealLunch').value || '12:30';
   state.settings.dinnerTime = document.getElementById('mealDinner').value || '19:30';
+  state.settings.breakfastEnd = document.getElementById('endBreakfast').value || '09:00';
+  state.settings.lunchEnd = document.getElementById('endLunch').value || '14:30';
+  state.settings.dinnerEnd = document.getElementById('endDinner').value || '22:00';
   delete state.settings.askDiningTime;                                  // retired: guests are always asked for a date
   state.settings.perItemWhen = document.getElementById('perItemToggle').checked;
   state.settings.orders = { email: document.getElementById('ordEmail').value.trim(), whatsapp: document.getElementById('ordWhatsapp').value.trim() };
